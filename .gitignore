@@ -1,0 +1,38 @@
+# Environment Variables
+.env
+.env.local
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Python Cache
+*.pyc
+*.pyo
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Playwright
+.playwright/
+
+# Logs and Screenshots
+logs/*.log
+!logs/.gitkeep
+screenshots/*.png
+!screenshots/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+
+# Build
+dist/
+build/
+*.egg-info/

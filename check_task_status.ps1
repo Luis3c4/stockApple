@@ -60,7 +60,7 @@ try {
     # Información de la tarea
     $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName
     
-    if ($taskInfo.LastRunTime -ne $null) {
+    if ($null -ne $taskInfo.LastRunTime) {
         $lastRun = $taskInfo.LastRunTime
         $timeSince = (Get-Date) - $lastRun
         Write-Host "  Última ejecución: $($lastRun.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor White
@@ -69,14 +69,16 @@ try {
         $lastResult = $taskInfo.LastTaskResult
         if ($lastResult -eq 0) {
             Write-Host "  Resultado:        ✅ Exitoso (código: $lastResult)" -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "  Resultado:        ⚠️ Código: $lastResult" -ForegroundColor Yellow
         }
-    } else {
+    }
+    else {
         Write-Host "  Última ejecución: Nunca ejecutada" -ForegroundColor Gray
     }
     
-    if ($taskInfo.NextRunTime -ne $null) {
+    if ($null -ne $taskInfo.NextRunTime) {
         $nextRun = $taskInfo.NextRunTime
         $timeUntil = $nextRun - (Get-Date)
         Write-Host "  Próxima ejecución: $($nextRun.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor White
@@ -111,7 +113,8 @@ try {
             $scheduledToday = Get-Date -Hour $startTime.Hour -Minute $startTime.Minute -Second 0
             if ($now -gt $scheduledToday) {
                 Write-Host "  $timeStr - $description ✓" -ForegroundColor DarkGray
-            } else {
+            }
+            else {
                 Write-Host "  $timeStr - $description" -ForegroundColor Cyan
             }
         }
@@ -130,15 +133,19 @@ try {
         Get-Content $logFile -Tail 15 | ForEach-Object {
             if ($_ -match '✅') {
                 Write-Host $_ -ForegroundColor Green
-            } elseif ($_ -match '❌') {
+            }
+            elseif ($_ -match '❌') {
                 Write-Host $_ -ForegroundColor Red
-            } elseif ($_ -match '⚠️') {
+            }
+            elseif ($_ -match '⚠️') {
                 Write-Host $_ -ForegroundColor Yellow
-            } else {
+            }
+            else {
                 Write-Host $_ -ForegroundColor Gray
             }
         }
-    } else {
+    }
+    else {
         Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
         Write-Host "📝 LOGS" -ForegroundColor Yellow
         Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
@@ -167,7 +174,8 @@ try {
     Write-Host "    .\setup_task_scheduler.ps1 -Remove" -ForegroundColor Gray
     Write-Host ""
     
-} catch {
+}
+catch {
     Write-Host "❌ No se encontró la tarea '$TaskName'" -ForegroundColor Red
     Write-Host ""
     Write-Host "💡 Para crear la tarea, ejecuta:" -ForegroundColor Yellow

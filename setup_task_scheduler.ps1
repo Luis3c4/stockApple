@@ -107,7 +107,8 @@ try {
         -DontStopIfGoingOnBatteries `
         -StartWhenAvailable `
         -RunOnlyIfNetworkAvailable `
-        -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+        -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
+        -WakeToRun
 
     # Principal (usuario actual)
     $principal = New-ScheduledTaskPrincipal `

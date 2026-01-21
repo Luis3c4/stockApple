@@ -46,9 +46,36 @@ try {
     
     Write-Log "Python encontrado: $PythonPath"
     
-    # Ejecutar main.py
-    $Output = & $PythonPath main.py 2>&1
-    $ExitCode = $LASTEXITCODE
+    # Ejecutar main.py con timeout de 5 minutos
+    $job = Start-Job -ScriptBlock { 
+        param($pythonPath, $scriptDir)
+        Set-Location $scriptDir
+        & $pythonPath main.py 2>&1
+    } -ArgumentList $PythonPath, $ScriptDir
+    
+    # Esperar máximo 5 minutos
+    $timeout = 300 # segundos
+    $completed = Wait-Job -Job $job -Timeout $timeout
+    
+    if ($completed) {
+        $Output = Receive-Job -Job $job
+        if ($job.State -eq 'Completed') {
+            $ExitCode = 0
+        }
+        else {
+            $ExitCode = 1
+        }
+        Remove-Job -Job $job
+    }
+    else {
+        Write-Log "TIMEOUT: La ejecucion excedio $timeout segundos"
+        Stop-Job -Job $job
+        Remove-Job -Job $job
+        Write-Log "Ejecucion cancelada por timeout"
+        exit 1
+    }
+    
+    if (-not $ExitCode) { $ExitCode = 0 }
     
     if ($ExitCode -eq 0) {
         Write-Log "Ejecucion completada exitosamente"

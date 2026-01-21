@@ -1,255 +1,228 @@
 # 🍎 Apple Store Scraper
 
-Scraper automatizado para verificar la disponibilidad de productos Apple en tiendas específicas usando Playwright.
+Bot automatizado para monitorear disponibilidad de productos Apple en tiendas específicas con notificaciones Telegram.
 
 ![Python](https://img.shields.io/badge/python-3.14+-blue.svg)
 ![Playwright](https://img.shields.io/badge/playwright-1.57+-green.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ## 📋 Características
 
-- 🤖 **Scraping con Playwright** - Navegación completa con JavaScript
-- 📸 **Screenshots automáticos** - Capturas en caso de error y durante el proceso
-- 📊 **Logging detallado** - Sistema completo de logs con rotación diaria
-- 🔧 **Configuración flexible** - Variables de entorno para fácil personalización
-- 🎯 **Búsqueda específica** - Filtra por producto y estado/región
-- 💾 **Export a JSON** - Guarda resultados en formato JSON
-- 🔁 **Sistema de caché inteligente** - Solo alerta cuando hay cambios reales en disponibilidad
-- 📱 **Notificaciones Telegram** - Alertas automáticas solo cuando se detectan cambios
+- 🤖 **Scraping inteligente** - Navegación con Playwright interceptando API real
+- 🔁 **Sistema de caché** - Solo alerta cuando hay cambios reales
+- 📱 **Telegram** - Notificaciones automáticas de cambios de stock
+- ⏰ **Ejecución automática** - Windows Task Scheduler con WakeToRun
+- 📊 **Logs detallados** - Tracking completo con rotación diaria
+- 🔧 **Timeout inteligente** - 5 minutos máximo por ejecución
 
-## 🚀 Instalación
+---
 
-### Prerrequisitos
+## 🚀 Instalación Rápida
 
-- Python 3.14 o superior
-- Conexión a internet
-
-### Paso 1: Preparar el entorno
-
-```bash
-# Crear entorno virtual (recomendado)
+### 1️⃣ Instalar dependencias
+```powershell
 python -m venv .venv
-
-# Activar entorno virtual
-# En Windows:
 .venv\Scripts\activate
-
-# En Linux/macOS:
-source .venv/bin/activate
-```
-
-### Paso 2: Instalar dependencias
-
-```bash
-# Instalar paquetes Python
 pip install -r requirements.txt
-
-# Instalar navegador Chromium para Playwright
-playwright install chromium
+playwright install
 ```
 
-### Paso 3: Configurar variables
-
-```bash
-# Crear archivo de configuración
-copy .env.example .env
-
-# Editar .env con tus valores (opcional, tiene defaults)
+### 2️⃣ Configurar Telegram
+Edita `.env`:
+```env
+PLAYWRIGHT_HEADLESS=true
+PLAYWRIGHT_DEBUG=false
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=tu_token_aqui
+TELEGRAM_CHAT_ID=tu_chat_id_aqui
+TARGET_PRODUCT=iPhone 17 Pro Max
+TARGET_STATE=Florida
 ```
 
-## 📖 Uso
-
-### Ejecutar scraper con sistema de caché (recomendado)
-
-```bash
+### 3️⃣ Probar manualmente
+```powershell
 python main.py
 ```
 
-El sistema de caché:
-- ✅ Solo envía alertas cuando detecta cambios
-- ✅ Compara con ejecución anterior
-- ✅ Ahorra notificaciones innecesarias
+---
 
-### Ver el navegador durante scraping (desarrollo)
+## ⏰ Ejecución Automática (Recomendado)
 
-```bash
+### Configurar Task Scheduler con WakeToRun
+
+**Ejecuta como Administrador:**
+```powershell
+.\setup_task_scheduler.ps1
+```
+
+**Horarios automáticos (5 veces al día):**
+- 🌅 06:00 - Primer chequeo
+- ☕ 10:00 - Segundo chequeo  
+- 🌞 14:00 - Tercer chequeo
+- 🌆 18:00 - Cuarto chequeo
+- 🌙 20:00 - Último chequeo
+
+**Características:**
+- ✅ Despierta laptop automáticamente (WakeToRun)
+- ✅ Timeout de 5 minutos por ejecución
+- ✅ Funciona con batería
+- ✅ No se detiene al suspender
+
+---
+
+## 📊 Monitoreo
+
+### Ver estado actual
+```powershell
+Get-ScheduledTask -TaskName "AppleStoreScraper" | Get-ScheduledTaskInfo
+```
+
+### Ver logs
+```powershell
+Get-Content logs\task_scheduler.log -Tail 20
+```
+
+### Probar manualmente
+```powershell
+Start-ScheduledTask -TaskName "AppleStoreScraper"
+```
+
+---
+
+## 🔄 Sistema de Caché
+
+**Flujo inteligente:**
+1. 🌐 Scraping con Playwright
+2. 📡 Intercepta API de Apple (fulfillment-messages)
+3. 🔍 Compara con caché anterior
+4. 🔔 **Solo alerta si hay cambios**
+5. 💾 Actualiza caché
+
+**Detecta:**
+- ✨ Nuevas tiendas con stock
+- 📉 Tiendas que agotaron stock
+- ✅ Sin cambios (no envía alerta)
+
+**Ubicación:** `cache/availability_cache.json`
+
+---
+
+## ⚙️ Configuración (.env)
+
+```env
+# Producto a monitorear
+TARGET_PRODUCT=iPhone 17 Pro Max
+TARGET_CAPACITY=256GB
+TARGET_COLOR=Silver
+
+# Región
+TARGET_STATE=Florida
+
+# Playwright
+PLAYWRIGHT_HEADLESS=true
+PLAYWRIGHT_DEBUG=false
+SAVE_SCREENSHOTS=false
+
+# Telegram
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=tu_token
+TELEGRAM_CHAT_ID=tu_chat_id
+```
+
+---
+
+## 🛠️ Comandos Útiles
+
+### Gestión de la tarea
+```powershell
+# Deshabilitar temporalmente
+Disable-ScheduledTask -TaskName "AppleStoreScraper"
+
+# Habilitar nuevamente
+Enable-ScheduledTask -TaskName "AppleStoreScraper"
+
+# Eliminar tarea
+.\setup_task_scheduler.ps1 -Remove
+```
+
+### Desarrollo
+```powershell
+# Ver navegador (debugging)
 python main.py --headless=false
-```
 
-### Probar conexión con Apple Store
-
-```bash
+# Probar conexión Apple Store
 python main.py --test
-```
 
-### Ver configuración actual
-
-```bash
+# Ver configuración actual
 python main.py --show-config
 ```
 
-### Más información sobre el flujo con caché
-
-Ver documentación detallada: [CACHE_FLOW.md](CACHE_FLOW.md)
-
-## ⚙️ Configuración
-
-Edita el archivo `.env` para personalizar el scraper:
-
-```env
-# URL de Apple Store
-APPLE_STORE_URL=https://www.apple.com/shop/buy-iphone
-
-# Modo headless (true = invisible, false = ver navegador)
-PLAYWRIGHT_HEADLESS=false
-
-# Screenshots automáticos en errores
-SCREENSHOT_ON_ERROR=true
-
-# Screenshots durante el proceso
-SAVE_SCREENSHOTS=true
-
-# Sistema de caché (nuevo)
-CACHE_DIR=cache
-CACHE_ENABLED=true
-
-# Producto a buscar
-TARGET_PRODUCT=iPhone 17
-
-# Estado/región donde buscar
-TARGET_STATE=Florida
-
-# Telegram (opcional)
-TELEGRAM_ENABLED=true
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
-```
-
-### Configuraciones importantes
-
-| Variable | Descripción | Default |
-|----------|-------------|---------|
-| `PLAYWRIGHT_HEADLESS` | Navegador invisible | `false` |
-| `SCREENSHOT_ON_ERROR` | Capturas en errores | `true` |
-| `SAVE_SCREENSHOTS` | Capturas del proceso | `true` |
-| `TARGET_PRODUCT` | Producto a buscar | `iPhone 17` |
-| `TARGET_STATE` | Estado/región | `Florida` |
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
 apple-store-scraper/
-├── main.py                      # 🎯 Punto de entrada
-├── config.py                    # ⚙️ Configuración
-├── requirements.txt             # 📦 Dependencias
-├── .env                         # 🔐 Variables de entorno
-├── .env.example                 # 📋 Plantilla de configuración
-├── README.md                    # 📖 Esta documentación
-├── CACHE_FLOW.md               # 🔁 Documentación del flujo con caché
+├── main.py                      # Punto de entrada
+├── config.py                    # Configuración
+├── requirements.txt             # Dependencias
+├── .env                         # Variables de entorno
+├── setup_task_scheduler.ps1     # Configurador automático
+├── run_task.ps1                 # Ejecutor con timeout
 │
-├── services/                    # 🔧 Servicios
-│   ├── __init__.py
-│   ├── apple_scraper.py        # 🕷️ Scraper de Apple Store
-│   └── telegram_bot.py         # 📱 Bot de Telegram
+├── services/                    
+│   ├── apple_scraper.py        # Scraper principal
+│   └── telegram_bot.py         # Notificaciones
 │
-├── utils/                       # 🛠️ Utilidades
-│   ├── __init__.py
-│   ├── logger.py               # 📊 Sistema de logging
-│   └── cache_manager.py        # 📦 Gestor de caché
+├── utils/                       
+│   ├── logger.py               # Sistema de logs
+│   └── cache_manager.py        # Gestor de caché
 │
-├── cache/                       # 📦 Archivos de caché
+├── cache/                       
 │   └── availability_cache.json
 │
-├── logs/                        # 📝 Archivos de log
-│   └── apple_bot_YYYYMMDD.log
+├── logs/                        
+│   ├── apple_bot_YYYYMMDD.log
+│   └── task_scheduler.log
 │
-└── screenshots/                 # 📸 Capturas de pantalla
-    ├── initial_page.png
-    └── error_*.png
+└── screenshots/                 
 ```
 
-## 🔧 Personalización del Scraper
+---
 
-### Actualizar selectores CSS
+## 🔧 Troubleshooting
 
-⚠️ **Los selectores CSS de Apple Store cambian frecuentemente**
+### La laptop no se despierta automáticamente
+- Verifica que esté conectada a corriente o con batería suficiente
+- Revisa configuración de energía (no usar "hibernar")
+- Algunos portátiles requieren configuración en BIOS para wake timers
 
-Edita [services/apple_scraper.py](services/apple_scraper.py) en el método `_extract_availability_data()`:
+### Timeout en ejecuciones
+- El script se cancela automáticamente después de 5 minutos
+- Revisa `logs\task_scheduler.log` para ver detalles
 
-```python
-def _extract_availability_data(self, page: Page):
-    # Actualiza estos selectores según la estructura real
-    store_items = page.query_selector_all(
-        '.tu-selector-css-actualizado'  # <- Modifica esto
-    )
-    # ... resto del código
-```
+### No recibo notificaciones Telegram
+- Verifica `TELEGRAM_ENABLED=true`
+- Confirma token y chat_id correctos
+- Prueba manualmente: `python main.py`
 
-### Proceso recomendado para actualizar selectores:
+### Selectores CSS desactualizados
+- Apple cambia su sitio frecuentemente
+- Ejecuta con `--headless=false` para ver qué busca
+- Actualiza selectores en `services/apple_scraper.py`
 
-1. **Ejecuta con navegador visible:**
-   ```bash
-   python main.py --headless=false
-   ```
+---
 
-2. **Inspecciona la página:**
-   - Usa F12 para abrir DevTools
-   - Inspecciona los elementos de las tiendas
-   - Identifica los selectores CSS correctos
+## 📚 Recursos
 
-3. **Actualiza el código:**
-   - Modifica `_extract_availability_data()` en `apple_scraper.py`
-   - Usa los nuevos selectores
+- **Telegram Bot**: [@BotFather](https://t.me/botfather)
+- **Playwright Docs**: [playwright.dev](https://playwright.dev)
+- **Task Scheduler**: `taskschd.msc`
 
-4. **Prueba:**
-   ```bash
-   python main.py --headless=false
-   ```
+---
 
-## 📊 Resultados
+## 📝 Licencia
 
-### En consola
-
-Los resultados se muestran automáticamente en la consola con formato:
-
-```
-📊 RESULTADOS DEL SCRAPING
-======================================
-📅 Timestamp: 2026-01-16 10:30:00
-📱 Producto: iPhone 17
-
-✅ DISPONIBLE en 2 tienda(s):
-   1. Apple Aventura
-      ℹ️  Available for pickup today
-   2. Apple Brickell City Centre
-
-❌ No disponible en 3 tienda(s):
-   • Apple International Plaza
-   • Apple The Falls
-   • Apple Dadeland
-
-📊 Total: 2 disponible(s) de 5 tienda(s)
-```
-
-### En archivo JSON
-
-Con `--save-json`, genera archivo como:
-
-```json
-{
-  "success": true,
-  "timestamp": "2026-01-16T10:30:00",
-  "product": "iPhone 17",
-  "available_stores": [
-    {
-      "name": "Apple Aventura",
-      "status": "available",
-      "details": "Available for pickup today"
-    }
-  ],
-  "unavailable_stores": [...]
-}
-```
+MIT License - Uso libre para proyectos personales
 
 ## 🐛 Troubleshooting
 

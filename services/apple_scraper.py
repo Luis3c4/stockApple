@@ -10,6 +10,7 @@ import os
 from typing import Dict, List, Any, Optional
 
 from config import Config
+from utils.cache_manager import CacheManager
 
 logger = logging.getLogger('AppleStockBot')
 
@@ -25,6 +26,7 @@ class AppleScraper:
         self.config = Config
         self.screenshot_dir = 'screenshots'
         os.makedirs(self.screenshot_dir, exist_ok=True)
+        self.cache_manager = CacheManager()  # Inicializar cache manager
     
     def check_availability(self) -> Dict[str, Any]:
         """
@@ -252,8 +254,26 @@ class AppleScraper:
         try:
             logger.info("🔍 Analizando datos de la API...")
             
+            # DEBUG: Guardar respuesta completa para inspección
+            import json
+            debug_file = f"{self.screenshot_dir}/api_response_debug.json"
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            logger.info(f"💾 Respuesta API guardada en: {debug_file}")
+            
             # Estructura real de Apple Store API
             if 'body' in data and 'content' in data['body']:
+                # Intentar extraer título del producto desde deliveryMessage (nivel superior)
+                delivery_message = data['body']['content'].get('deliveryMessage', {})
+                for part_number, part_data in delivery_message.items():
+                    if part_number.startswith('MF') and isinstance(part_data, dict):
+                        regular_data = part_data.get('regular', {})
+                        sub_header = regular_data.get('subHeader', '')
+                        if sub_header and sub_header.startswith('For '):
+                            product_title = sub_header.replace('For ', '')
+                            logger.info(f"📱 Producto detectado desde deliveryMessage: {product_title}")
+                            break
+                
                 stores_data = data['body']['content'].get('pickupMessage', {}).get('stores', [])
                 
                 logger.info(f"📍 Analizando {len(stores_data)} tiendas...")
@@ -280,11 +300,25 @@ class AppleScraper:
                         # Obtener mensaje formateado y título del producto
                         message_types = part_data.get('messageTypes', {})
                         
-                        # Extraer el título del producto (solo una vez)
-                        if not product_title and 'compact' in message_types:
-                            product_title = message_types['compact'].get('storePickupProductTitle', '')
+                        # DEBUG: Ver estructura completa de message_types
+                        if not product_title:
+                            logger.info(f"🔍 DEBUG - message_types keys: {list(message_types.keys())}")
+                            if 'regular' in message_types:
+                                regular_keys = list(message_types['regular'].keys())
+                                logger.info(f"🔍 DEBUG - regular keys: {regular_keys}")
+                        
+                        # Extraer el título del producto desde messageTypes.regular (solo una vez)
+                        if not product_title and 'regular' in message_types:
+                            product_title = message_types['regular'].get('storePickupProductTitle', '')
                             if product_title:
-                                logger.info(f"📱 Producto detectado: {product_title}")
+                                logger.info(f"📱 Producto detectado desde messageTypes: {product_title}")
+                        
+                        # Intentar también desde regular.subHeader si tiene formato "For [ProductName]"
+                        if not product_title and 'regular' in message_types:
+                            sub_header = message_types['regular'].get('subHeader', '')
+                            if sub_header and sub_header.startswith('For '):
+                                product_title = sub_header.replace('For ', '')
+                                logger.info(f"📱 Producto detectado desde subHeader: {product_title}")
                         
                         regular_message = message_types.get('regular', {})
                         formatted_quote = regular_message.get('storePickupQuote', pickup_quote)
@@ -403,3 +437,101 @@ class AppleScraper:
             except Exception as e:
                 logger.error(f"❌ Error probando conexión: {e}")
                 return False
+    
+    def check_availability_with_cache(self) -> Dict[str, Any]:
+        """
+        🔁 FLUJO COMPLETO CON CACHÉ
+        
+        Ejecuta el flujo correcto:
+        1. Abre Apple con Playwright
+        2. Interactúa como humano
+        3. Apple hace el request
+        4. Intercepta fulfillment-messages
+        5. Extrae stock
+        6. Compara con caché
+        7. Solo si hay cambios → retorna con flag de alerta
+        8. Actualiza caché
+        9. Cierra
+        
+        Returns:
+            dict: {
+                'success': bool,
+                'timestamp': str,
+                'product': str,
+                'has_changes': bool,           # 🔔 Indica si hay cambios
+                'should_alert': bool,          # 🔔 Indica si enviar alerta
+                'changes': dict,               # Detalles de los cambios
+                'available_stores': list,
+                'unavailable_stores': list,
+                'cache_age': str,              # Antigüedad del caché anterior
+                'error': str (opcional)
+            }
+        """
+        logger.info("=" * 70)
+        logger.info("🔁 INICIANDO FLUJO CON CACHÉ")
+        logger.info("=" * 70)
+        
+        # Mostrar info del caché anterior
+        cache_age = self.cache_manager.get_cache_age()
+        if cache_age:
+            logger.info(f"📦 Caché anterior: {cache_age} de antigüedad")
+        else:
+            logger.info("📦 Sin caché previo - Primera ejecución")
+        
+        # PASO 1-5: Ejecutar scraping normal (abre, interactúa, intercepta, extrae)
+        logger.info("🕷️ PASO 1-5: Ejecutando scraping...")
+        scraping_result = self.check_availability()
+        
+        # Si el scraping falló, retornar error
+        if not scraping_result.get('success'):
+            logger.error("❌ Scraping falló - No se puede continuar")
+            return {
+                **scraping_result,
+                'has_changes': False,
+                'should_alert': False,
+                'changes': {},
+                'cache_age': cache_age
+            }
+        
+        logger.info(f"✅ Scraping completado - {len(scraping_result['available_stores'])} tiendas con stock")
+        
+        # PASO 6: Comparar con caché
+        logger.info("🔍 PASO 6: Comparando con caché...")
+        comparison = self.cache_manager.compare_with_cache(scraping_result)
+        
+        # PASO 7: Determinar si debe alertar
+        has_changes = comparison['has_changes']
+        is_first_run = comparison.get('is_first_run', False)
+        should_alert = has_changes  # Alertar solo si hay cambios
+        
+        if has_changes:
+            if is_first_run:
+                logger.info("🆕 Primera ejecución - Se guardará estado inicial")
+            else:
+                logger.info(f"🔔 CAMBIOS DETECTADOS - Se debe enviar alerta")
+                logger.info(f"   {comparison['summary']}")
+        else:
+            logger.info(f"ℹ️ Sin cambios - No se enviará alerta")
+            logger.info(f"   {comparison['summary']}")
+        
+        # PASO 8: Actualizar caché (siempre actualizar con datos más recientes)
+        logger.info("💾 PASO 8: Actualizando caché...")
+        self.cache_manager.save_cache(scraping_result)
+        
+        # PASO 9: (El cierre ya se hizo en check_availability)
+        logger.info("✅ PASO 9: Navegador cerrado")
+        
+        logger.info("=" * 70)
+        logger.info(f"🏁 FLUJO COMPLETADO - Alerta: {'SÍ' if should_alert else 'NO'}")
+        logger.info("=" * 70)
+        
+        # Retornar resultado enriquecido
+        return {
+            **scraping_result,
+            'has_changes': has_changes,
+            'should_alert': should_alert,
+            'changes': comparison['changes'],
+            'summary': comparison['summary'],
+            'cache_age': cache_age,
+            'is_first_run': is_first_run
+        }

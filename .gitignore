@@ -22,7 +22,12 @@ __pycache__/
 logs/*.log
 !logs/.gitkeep
 screenshots/*.png
+screenshots/*.json
 !screenshots/.gitkeep
+
+# Cache (nuevo)
+cache/*.json
+!cache/.gitkeep
 
 # IDE
 .vscode/

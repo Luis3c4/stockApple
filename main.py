@@ -18,6 +18,7 @@ Fecha: Enero 2026
 import sys
 import argparse
 import json
+from typing import Optional
 from datetime import datetime
 
 from config import Config
@@ -30,15 +31,15 @@ logger = setup_logger()
 
 def run_scraper(show_browser: bool = False) -> dict:
     """
-    Ejecuta el scraper de Apple Store
+    Ejecuta el scraper de Apple Store con flujo de caché
     
     Args:
         show_browser: Si True, muestra el navegador durante el scraping
     
     Returns:
-        dict: Resultados del scraping
+        dict: Resultados del scraping con información de cambios
     """
-    logger.info("🔄 Iniciando scraper de Apple Store...")
+    logger.info("🔄 Iniciando scraper de Apple Store con caché...")
     
     # Sobrescribir configuración si se especifica
     if show_browser:
@@ -49,22 +50,26 @@ def run_scraper(show_browser: bool = False) -> dict:
         # Crear instancia del scraper
         scraper = AppleScraper()
         
-        # Ejecutar scraping
-        logger.info("🕷️ Iniciando scraping...")
-        result = scraper.check_availability()
+        # 🔁 EJECUTAR FLUJO COMPLETO CON CACHÉ
+        logger.info("🕷️ Iniciando flujo con caché...")
+        result = scraper.check_availability_with_cache()
         
         # Mostrar resultados
         display_results(result)
         
-        # Enviar notificación por Telegram si está habilitado
+        # 🔔 SOLO ENVIAR NOTIFICACIÓN SI HAY CAMBIOS
         if Config.TELEGRAM_ENABLED:
-            logger.info("📱 Enviando notificación a Telegram...")
-            try:
-                from services.telegram_bot import TelegramBot
-                telegram = TelegramBot()
-                telegram.send_availability_report(result)
-            except Exception as e:
-                logger.error(f"❌ Error enviando notificación a Telegram: {e}", exc_info=True)
+            if result.get('should_alert', False):
+                logger.info("📱 HAY CAMBIOS - Enviando notificación a Telegram...")
+                try:
+                    from services.telegram_bot import TelegramBot
+                    telegram = TelegramBot()
+                    telegram.send_availability_report(result)
+                    logger.info("✅ Notificación enviada exitosamente")
+                except Exception as e:
+                    logger.error(f"❌ Error enviando notificación a Telegram: {e}", exc_info=True)
+            else:
+                logger.info("ℹ️ Sin cambios - No se enviará notificación a Telegram")
         
         return result
         
@@ -76,6 +81,7 @@ def run_scraper(show_browser: bool = False) -> dict:
 def display_results(result: dict) -> None:
     """
     Muestra los resultados del scraping de forma formateada
+    Incluye información de cambios cuando se usa caché
     
     Args:
         result: Diccionario con resultados del scraping
@@ -90,23 +96,68 @@ def display_results(result: dict) -> None:
     
     logger.info(f"📅 Timestamp: {result.get('timestamp', 'N/A')}")
     logger.info(f"📱 Producto: {result.get('product', 'N/A')}")
+    
+    # 📦 Información de caché
+    if 'cache_age' in result and result.get('cache_age'):
+        logger.info(f"📦 Caché anterior: {result['cache_age']} de antigüedad")
+    
+    # 🔔 Información de cambios
+    if 'has_changes' in result:
+        if result.get('is_first_run'):
+            logger.info(f"🆕 Estado: Primera ejecución - Datos iniciales")
+        elif result['has_changes']:
+            logger.info(f"🔔 Estado: CAMBIOS DETECTADOS")
+            logger.info(f"   {result.get('summary', '')}")
+            
+            # Mostrar detalles de cambios
+            changes = result.get('changes', {})
+            if changes.get('new_available'):
+                logger.info(f"   ✨ {len(changes['new_available'])} tienda(s) con NUEVO stock")
+            if changes.get('new_unavailable'):
+                logger.info(f"   ⚠️ {len(changes['new_unavailable'])} tienda(s) AGOTARON stock")
+        else:
+            logger.info(f"ℹ️ Estado: Sin cambios desde última verificación")
+            logger.info(f"   {result.get('summary', '')}")
+    
     logger.info("")
     
     available = result.get('available_stores', [])
     unavailable = result.get('unavailable_stores', [])
     
+    # Si hay cambios, mostrar primero los cambios destacados
+    if result.get('has_changes') and not result.get('is_first_run'):
+        changes = result.get('changes', {})
+        
+        if changes.get('new_available'):
+            logger.info(f"✨ NUEVO STOCK ({len(changes['new_available'])} tienda(s)):")
+            for i, store in enumerate(changes['new_available'], 1):
+                logger.info(f"   {i}. 🎉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+                logger.info(f"      {store.get('pickup_quote', '')}")
+            logger.info("")
+        
+        if changes.get('new_unavailable'):
+            logger.info(f"⚠️ STOCK AGOTADO ({len(changes['new_unavailable'])} tienda(s)):")
+            for i, store in enumerate(changes['new_unavailable'], 1):
+                logger.info(f"   {i}. 📉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+            logger.info("")
+    
+    # Resumen de todas las tiendas
     if available:
-        logger.info(f"✅ DISPONIBLE en {len(available)} tienda(s):")
+        logger.info(f"✅ DISPONIBLE en {len(available)} tienda(s) (total):")
         for i, store in enumerate(available, 1):
-            logger.info(f"   {i}. {store.get('name', 'Unknown')}")
-            if store.get('details'):
-                logger.info(f"      ℹ️  {store.get('details')}")
+            name = store.get('name', 'Unknown')
+            city = store.get('city', '')
+            state = store.get('state', '')
+            logger.info(f"   {i}. {name} - {city}, {state}")
         logger.info("")
     
     if unavailable:
         logger.info(f"❌ No disponible en {len(unavailable)} tienda(s):")
         for store in unavailable[:5]:  # Mostrar máximo 5
-            logger.info(f"   • {store.get('name', 'Unknown')}")
+            name = store.get('name', 'Unknown')
+            city = store.get('city', '')
+            state = store.get('state', '')
+            logger.info(f"   • {name} - {city}, {state}")
         if len(unavailable) > 5:
             logger.info(f"   ... y {len(unavailable) - 5} más")
         logger.info("")
@@ -121,7 +172,7 @@ def display_results(result: dict) -> None:
     logger.info("=" * 70)
 
 
-def save_results_json(result: dict, filename: str = None) -> None:
+def save_results_json(result: dict, filename: Optional[str] = None) -> None:
     """
     Guarda los resultados en un archivo JSON
     

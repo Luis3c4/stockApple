@@ -23,6 +23,10 @@ class Config:
     SCREENSHOT_ON_ERROR: bool = os.getenv('SCREENSHOT_ON_ERROR', 'true').lower() == 'true'
     SAVE_SCREENSHOTS: bool = os.getenv('SAVE_SCREENSHOTS', 'true').lower() == 'true'
     
+    # === Cache Configuration ===
+    CACHE_DIR: str = os.getenv('CACHE_DIR', 'cache')  # Directorio para caché
+    CACHE_ENABLED: bool = os.getenv('CACHE_ENABLED', 'true').lower() == 'true'  # Habilitar sistema de caché
+    
     # === Target Configuration ===
     TARGET_PRODUCT: str = os.getenv('TARGET_PRODUCT', 'iPhone 17')
     TARGET_STATE: str = os.getenv('TARGET_STATE', 'Florida')
@@ -30,6 +34,7 @@ class Config:
     # === Telegram Configuration ===
     TELEGRAM_BOT_TOKEN: str = os.getenv('TELEGRAM_BOT_TOKEN', '')
     TELEGRAM_CHAT_ID: str = os.getenv('TELEGRAM_CHAT_ID', '')
+    TELEGRAM_CHAT_IDS: list = [id.strip() for id in os.getenv('TELEGRAM_CHAT_ID', '').split(',') if id.strip()]
     TELEGRAM_ENABLED: bool = os.getenv('TELEGRAM_ENABLED', 'true').lower() == 'true'
     
     @staticmethod
@@ -59,6 +64,10 @@ class Config:
    Headless: {Config.PLAYWRIGHT_HEADLESS}
    Screenshots en error: {Config.SCREENSHOT_ON_ERROR}
    Guardar screenshots: {Config.SAVE_SCREENSHOTS}
+
+📦 Cache:
+   Directorio: {Config.CACHE_DIR}
+   Habilitado: {Config.CACHE_ENABLED}
 
 🎯 Target:
    Producto: {Config.TARGET_PRODUCT}

@@ -14,6 +14,8 @@ Scraper automatizado para verificar la disponibilidad de productos Apple en tien
 - 🔧 **Configuración flexible** - Variables de entorno para fácil personalización
 - 🎯 **Búsqueda específica** - Filtra por producto y estado/región
 - 💾 **Export a JSON** - Guarda resultados en formato JSON
+- 🔁 **Sistema de caché inteligente** - Solo alerta cuando hay cambios reales en disponibilidad
+- 📱 **Notificaciones Telegram** - Alertas automáticas solo cuando se detectan cambios
 
 ## 🚀 Instalación
 
@@ -57,22 +59,21 @@ copy .env.example .env
 
 ## 📖 Uso
 
-### Ejecutar scraper (modo invisible)
+### Ejecutar scraper con sistema de caché (recomendado)
 
 ```bash
 python main.py
 ```
 
-### Ver el navegador durante scraping (recomendado para desarrollo)
+El sistema de caché:
+- ✅ Solo envía alertas cuando detecta cambios
+- ✅ Compara con ejecución anterior
+- ✅ Ahorra notificaciones innecesarias
+
+### Ver el navegador durante scraping (desarrollo)
 
 ```bash
 python main.py --headless=false
-```
-
-### Guardar resultados en JSON
-
-```bash
-python main.py --save-json
 ```
 
 ### Probar conexión con Apple Store
@@ -86,6 +87,10 @@ python main.py --test
 ```bash
 python main.py --show-config
 ```
+
+### Más información sobre el flujo con caché
+
+Ver documentación detallada: [CACHE_FLOW.md](CACHE_FLOW.md)
 
 ## ⚙️ Configuración
 
@@ -104,11 +109,20 @@ SCREENSHOT_ON_ERROR=true
 # Screenshots durante el proceso
 SAVE_SCREENSHOTS=true
 
+# Sistema de caché (nuevo)
+CACHE_DIR=cache
+CACHE_ENABLED=true
+
 # Producto a buscar
 TARGET_PRODUCT=iPhone 17
 
 # Estado/región donde buscar
 TARGET_STATE=Florida
+
+# Telegram (opcional)
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
 
 ### Configuraciones importantes
@@ -131,14 +145,20 @@ apple-store-scraper/
 ├── .env                         # 🔐 Variables de entorno
 ├── .env.example                 # 📋 Plantilla de configuración
 ├── README.md                    # 📖 Esta documentación
+├── CACHE_FLOW.md               # 🔁 Documentación del flujo con caché
 │
 ├── services/                    # 🔧 Servicios
 │   ├── __init__.py
-│   └── apple_scraper.py        # 🕷️ Scraper de Apple Store
+│   ├── apple_scraper.py        # 🕷️ Scraper de Apple Store
+│   └── telegram_bot.py         # 📱 Bot de Telegram
 │
 ├── utils/                       # 🛠️ Utilidades
 │   ├── __init__.py
-│   └── logger.py               # 📊 Sistema de logging
+│   ├── logger.py               # 📊 Sistema de logging
+│   └── cache_manager.py        # 📦 Gestor de caché
+│
+├── cache/                       # 📦 Archivos de caché
+│   └── availability_cache.json
 │
 ├── logs/                        # 📝 Archivos de log
 │   └── apple_bot_YYYYMMDD.log

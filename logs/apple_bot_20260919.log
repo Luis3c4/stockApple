@@ -1,0 +1,88 @@
+2026-09-19 15:45:47 - AppleStockBot - INFO - Logger inicializado - Archivo: logs/apple_bot_20260919.log
+2026-09-19 15:45:47 - AppleStockBot - INFO - ✅ Configuración validada correctamente
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🔄 Iniciando scraper de Apple Store con caché...
+2026-09-19 15:45:47 - AppleStockBot - INFO - 📦 Cache Manager inicializado - Directorio: cache
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🕷️ Iniciando flujo con caché...
+2026-09-19 15:45:47 - AppleStockBot - INFO - ======================================================================
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🔁 INICIANDO FLUJO CON CACHÉ
+2026-09-19 15:45:47 - AppleStockBot - INFO - ======================================================================
+2026-09-19 15:45:47 - AppleStockBot - INFO - 📦 Sin caché previo - Primera ejecución
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🕷️ PASO 1-5: Ejecutando scraping...
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🔍 Iniciando scraping de: iPhone 17 pro
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🌐 URL objetivo: https://www.apple.com/shop/buy-iphone
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🚀 Lanzando navegador (headless=True)
+2026-09-19 15:45:47 - AppleStockBot - INFO - 🌐 Navegando a configuración de iPhone 17 Pro...
+2026-09-19 15:45:50 - AppleStockBot - INFO - ✓ Página cargada - Status: 200
+2026-09-19 15:45:50 - AppleStockBot - INFO - ✓ Configuración preseleccionada: 6.9", 256GB, Burgundy, Unlocked
+2026-09-19 15:45:53 - AppleStockBot - INFO - 🔎 Extrayendo datos de disponibilidad...
+2026-09-19 15:45:53 - AppleStockBot - INFO - 🛡️ PASO 1: Seleccionando no Apple Care...
+2026-09-19 15:45:53 - AppleStockBot - INFO - ✓ No Apple Care seleccionado
+2026-09-19 15:45:54 - AppleStockBot - INFO - 📍 PASO 2: Haciendo clic en 'Check availability'...
+2026-09-19 15:46:04 - AppleStockBot - ERROR - ❌ Error extrayendo datos: Page.wait_for_selector: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("button[data-autom^=\"productLocatorTriggerLink_MJW64LL/A\"]") to be visible
+Traceback (most recent call last):
+  File "/home/runner/work/stockApple/stockApple/services/apple_scraper.py", line 182, in _extract_availability_data
+    page.wait_for_selector(check_availability_btn, timeout=10000)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.14.7/x64/lib/python3.14/site-packages/playwright/sync_api/_generated.py", line 8213, in wait_for_selector
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.wait_for_selector(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            selector=selector, timeout=timeout, state=state, strict=strict
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        )
+        ^
+    )
+    ^
+  File "/opt/hostedtoolcache/Python/3.14.7/x64/lib/python3.14/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "/opt/hostedtoolcache/Python/3.14.7/x64/lib/python3.14/site-packages/playwright/_impl/_page.py", line 419, in wait_for_selector
+    return await self._main_frame.wait_for_selector(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.14.7/x64/lib/python3.14/site-packages/playwright/_impl/_frame.py", line 369, in wait_for_selector
+    await self._channel.send(
+        "waitForSelector", self._timeout, locals_to_params(locals())
+    )
+  File "/opt/hostedtoolcache/Python/3.14.7/x64/lib/python3.14/site-packages/playwright/_impl/_connection.py", line 69, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/opt/hostedtoolcache/Python/3.14.7/x64/lib/python3.14/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Page.wait_for_selector: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator("button[data-autom^=\"productLocatorTriggerLink_MJW64LL/A\"]") to be visible
+
+2026-09-19 15:46:05 - AppleStockBot - INFO - ✅ Scraping completado - Encontradas 0 tiendas con stock
+2026-09-19 15:46:05 - AppleStockBot - INFO - ✅ Scraping completado - 0 tiendas con stock
+2026-09-19 15:46:05 - AppleStockBot - INFO - 🔍 PASO 6: Comparando con caché...
+2026-09-19 15:46:05 - AppleStockBot - INFO - 📂 No existe caché previo
+2026-09-19 15:46:05 - AppleStockBot - INFO - 🆕 Primera ejecución - No hay caché previo para comparar
+2026-09-19 15:46:05 - AppleStockBot - INFO - 🆕 Primera ejecución - Se guardará estado inicial
+2026-09-19 15:46:05 - AppleStockBot - INFO - 💾 PASO 8: Actualizando caché...
+2026-09-19 15:46:05 - AppleStockBot - INFO - 💾 Caché actualizado - Timestamp: 2026-09-19T15:46:05.026492
+2026-09-19 15:46:05 - AppleStockBot - INFO - ✅ PASO 9: Navegador cerrado
+2026-09-19 15:46:05 - AppleStockBot - INFO - ======================================================================
+2026-09-19 15:46:05 - AppleStockBot - INFO - 🏁 FLUJO COMPLETADO - Alerta: SÍ
+2026-09-19 15:46:05 - AppleStockBot - INFO - ======================================================================
+2026-09-19 15:46:05 - AppleStockBot - INFO - ======================================================================
+2026-09-19 15:46:05 - AppleStockBot - INFO - 📊 RESULTADOS DEL SCRAPING
+2026-09-19 15:46:05 - AppleStockBot - INFO - ======================================================================
+2026-09-19 15:46:05 - AppleStockBot - INFO - 📅 Timestamp: 2026-09-19T15:46:05.026492
+2026-09-19 15:46:05 - AppleStockBot - INFO - 📱 Producto: iPhone 17 pro
+2026-09-19 15:46:05 - AppleStockBot - INFO - 🆕 Estado: Primera ejecución - Datos iniciales
+2026-09-19 15:46:05 - AppleStockBot - INFO - 
+2026-09-19 15:46:05 - AppleStockBot - WARNING - ⚠️ No se encontraron datos de disponibilidad
+2026-09-19 15:46:05 - AppleStockBot - INFO - 💡 Ejecuta con --headless=false para ver qué está pasando
+2026-09-19 15:46:05 - AppleStockBot - INFO - 💡 Revisa screenshots/ para capturas de pantalla
+2026-09-19 15:46:05 - AppleStockBot - INFO - 📊 Total: 0 disponible(s) de 0 tienda(s) verificadas
+2026-09-19 15:46:05 - AppleStockBot - INFO - ======================================================================
+2026-09-19 15:46:05 - AppleStockBot - INFO - 📱 HAY CAMBIOS - Enviando notificación a Telegram...
+2026-09-19 15:46:06 - AppleStockBot - INFO - ✅ Mensaje enviado a chat 6238521803
+2026-09-19 15:46:06 - AppleStockBot - INFO - ✅ Mensaje enviado a chat 1310579024
+2026-09-19 15:46:06 - AppleStockBot - INFO - ✅ Notificación enviada exitosamente

@@ -337,6 +337,10 @@ Para más información: README.md
         show_browser = args.headless.lower() == 'false'
         result = run_scraper(show_browser=show_browser)
         
+        # Marcar el proceso como fallido si el scraping no tuvo éxito (necesario para CI)
+        if not result.get('success'):
+            sys.exit(1)
+        
         # Guardar resultados si se especifica
         if args.save_json:
             save_results_json(result)

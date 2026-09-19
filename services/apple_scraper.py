@@ -231,6 +231,7 @@ class AppleScraper:
         
         except Exception as e:
             logger.error(f"❌ Error extrayendo datos: {e}", exc_info=True)
+            raise
         
         return {
             'available_stores': available_stores,
@@ -387,13 +388,21 @@ class AppleScraper:
         if not self.config.SCREENSHOT_ON_ERROR:
             return
         
-        filename = f"{self.screenshot_dir}/error_{error_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        base_name = f"{self.screenshot_dir}/error_{error_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
         try:
-            page.screenshot(path=filename, full_page=True)
-            logger.info(f"📸 Screenshot de error guardado: {filename}")
+            page.screenshot(path=f"{base_name}.png", full_page=True)
+            logger.info(f"📸 Screenshot de error guardado: {base_name}.png")
         except Exception as e:
             logger.error(f"❌ No se pudo guardar screenshot: {e}")
+        
+        # HTML completo para diagnosticar qué renderizó Apple (útil en runners remotos)
+        try:
+            with open(f"{base_name}.html", 'w', encoding='utf-8') as f:
+                f.write(page.content())
+            logger.info(f"💾 HTML de error guardado: {base_name}.html")
+        except Exception as e:
+            logger.error(f"❌ No se pudo guardar HTML: {e}")
     
     def _error_result(self, error_message: str) -> Dict[str, Any]:
         """

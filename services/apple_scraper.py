@@ -177,10 +177,11 @@ class AppleScraper:
             page.wait_for_timeout(1000)
             
             # PASO 2: Click en botón "Check availability"
+            # Selector dinámico: el número de parte varía según la config/región que Apple asigne
             logger.info("📍 PASO 2: Haciendo clic en 'Check availability'...")
-            check_availability_btn = 'button[data-autom^="productLocatorTriggerLink_MJW64LL/A"]'
-            page.wait_for_selector(check_availability_btn, timeout=10000)
-            page.click(check_availability_btn)
+            check_availability_btn = page.locator('button[data-autom^="productLocatorTriggerLink_"]').first
+            check_availability_btn.wait_for(state='visible', timeout=10000)
+            check_availability_btn.click()
             logger.info("✓ Modal de disponibilidad abierto")
             page.wait_for_timeout(2000)
             

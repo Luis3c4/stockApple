@@ -69,7 +69,7 @@ class AppleScraper:
                 
                 # Navegar directamente al iPhone 17 Pro configurado (6.9", 256GB, Silver, Unlocked)
                 logger.info("🌐 Navegando a configuración de iPhone 17 Pro...")
-                product_url = "https://www.apple.com/shop/buy-iphone/iphone-17-pro/6.9-inch-display-256gb-silver-unlocked"
+                product_url = "https://www.apple.com/shop/buy-iphone/iphone-18-pro/6.9-inch-display-256gb-burgundy-unlocked"
                 response = page.goto(
                     product_url, 
                     wait_until='networkidle',
@@ -80,7 +80,7 @@ class AppleScraper:
                     raise Exception(f"Error al cargar página: Status {response.status if response else 'N/A'}")
                 
                 logger.info(f"✓ Página cargada - Status: {response.status}")
-                logger.info("✓ Configuración preseleccionada: 6.9\", 256GB, Silver, Unlocked")
+                logger.info("✓ Configuración preseleccionada: 6.9\", 256GB, Burgundy, Unlocked")
                 
                 # Esperar a que cargue contenido dinámico
                 page.wait_for_timeout(3000)
@@ -178,7 +178,7 @@ class AppleScraper:
             
             # PASO 2: Click en botón "Check availability"
             logger.info("📍 PASO 2: Haciendo clic en 'Check availability'...")
-            check_availability_btn = 'button[data-autom^="productLocatorTriggerLink"]'
+            check_availability_btn = 'button[data-autom^="productLocatorTriggerLink_MJW64LL/A"]'
             page.wait_for_selector(check_availability_btn, timeout=10000)
             page.click(check_availability_btn)
             logger.info("✓ Modal de disponibilidad abierto")
@@ -266,13 +266,15 @@ class AppleScraper:
                 # Intentar extraer título del producto desde deliveryMessage (nivel superior)
                 delivery_message = data['body']['content'].get('deliveryMessage', {})
                 for part_number, part_data in delivery_message.items():
-                    if part_number.startswith('MF') and isinstance(part_data, dict):
-                        regular_data = part_data.get('regular', {})
-                        sub_header = regular_data.get('subHeader', '')
-                        if sub_header and sub_header.startswith('For '):
-                            product_title = sub_header.replace('For ', '')
-                            logger.info(f"📱 Producto detectado desde deliveryMessage: {product_title}")
-                            break
+                    if not isinstance(part_data, dict):
+                        continue
+
+                    regular_data = part_data.get('regular', {})
+                    sub_header = regular_data.get('subHeader', '')
+                    if isinstance(sub_header, str) and sub_header.startswith('For '):
+                        product_title = sub_header.removeprefix('For ').strip()
+                        logger.info(f"📱 Producto detectado desde deliveryMessage ({part_number}): {product_title}")
+                        break
                 
                 stores_data = data['body']['content'].get('pickupMessage', {}).get('stores', [])
                 

@@ -33,14 +33,12 @@ test-results/
 htmlcov/
 
 # Logs and Screenshots
-logs/*.log
 !logs/.gitkeep
 screenshots/*.png
 screenshots/*.json
 !screenshots/.gitkeep
 
 # Cache (nuevo)
-cache/*.json
 !cache/.gitkeep
 
 # IDE

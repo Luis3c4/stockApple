@@ -10,7 +10,6 @@ Bot automatizado para monitorear disponibilidad de productos Apple en tiendas es
 - 🤖 **Scraping inteligente** - Navegación con Playwright interceptando API real
 - 🔁 **Sistema de caché** - Solo alerta cuando hay cambios reales
 - 📱 **Telegram** - Notificaciones automáticas de cambios de stock
-- ⏰ **Ejecución automática** - Windows Task Scheduler con WakeToRun
 - 📊 **Logs detallados** - Tracking completo con rotación diaria
 - 🔧 **Timeout inteligente** - 5 minutos máximo por ejecución
 
@@ -41,49 +40,6 @@ TARGET_STATE=Florida
 ### 3️⃣ Probar manualmente
 ```powershell
 python main.py
-```
-
----
-
-## ⏰ Ejecución Automática (Recomendado)
-
-### Configurar Task Scheduler con WakeToRun
-
-**Ejecuta como Administrador:**
-```powershell
-.\setup_task_scheduler.ps1
-```
-
-**Horarios automáticos (5 veces al día):**
-- 🌅 06:00 - Primer chequeo
-- ☕ 10:00 - Segundo chequeo  
-- 🌞 14:00 - Tercer chequeo
-- 🌆 18:00 - Cuarto chequeo
-- 🌙 20:00 - Último chequeo
-
-**Características:**
-- ✅ Despierta laptop automáticamente (WakeToRun)
-- ✅ Timeout de 5 minutos por ejecución
-- ✅ Funciona con batería
-- ✅ No se detiene al suspender
-
----
-
-## 📊 Monitoreo
-
-### Ver estado actual
-```powershell
-Get-ScheduledTask -TaskName "AppleStoreScraper" | Get-ScheduledTaskInfo
-```
-
-### Ver logs
-```powershell
-Get-Content logs\task_scheduler.log -Tail 20
-```
-
-### Probar manualmente
-```powershell
-Start-ScheduledTask -TaskName "AppleStoreScraper"
 ```
 
 ---
@@ -132,18 +88,6 @@ TELEGRAM_CHAT_ID=tu_chat_id
 
 ## 🛠️ Comandos Útiles
 
-### Gestión de la tarea
-```powershell
-# Deshabilitar temporalmente
-Disable-ScheduledTask -TaskName "AppleStoreScraper"
-
-# Habilitar nuevamente
-Enable-ScheduledTask -TaskName "AppleStoreScraper"
-
-# Eliminar tarea
-.\setup_task_scheduler.ps1 -Remove
-```
-
 ### Desarrollo
 ```powershell
 # Ver navegador (debugging)
@@ -166,8 +110,6 @@ apple-store-scraper/
 ├── config.py                    # Configuración
 ├── requirements.txt             # Dependencias
 ├── .env                         # Variables de entorno
-├── setup_task_scheduler.ps1     # Configurador automático
-├── run_task.ps1                 # Ejecutor con timeout
 │
 ├── services/                    
 │   ├── apple_scraper.py        # Scraper principal
@@ -181,8 +123,7 @@ apple-store-scraper/
 │   └── availability_cache.json
 │
 ├── logs/                        
-│   ├── apple_bot_YYYYMMDD.log
-│   └── task_scheduler.log
+│   └── apple_bot_YYYYMMDD.log
 │
 └── screenshots/                 
 ```
@@ -190,15 +131,6 @@ apple-store-scraper/
 ---
 
 ## 🔧 Troubleshooting
-
-### La laptop no se despierta automáticamente
-- Verifica que esté conectada a corriente o con batería suficiente
-- Revisa configuración de energía (no usar "hibernar")
-- Algunos portátiles requieren configuración en BIOS para wake timers
-
-### Timeout en ejecuciones
-- El script se cancela automáticamente después de 5 minutos
-- Revisa `logs\task_scheduler.log` para ver detalles
 
 ### No recibo notificaciones Telegram
 - Verifica `TELEGRAM_ENABLED=true`
@@ -216,13 +148,8 @@ apple-store-scraper/
 
 - **Telegram Bot**: [@BotFather](https://t.me/botfather)
 - **Playwright Docs**: [playwright.dev](https://playwright.dev)
-- **Task Scheduler**: `taskschd.msc`
 
 ---
-
-## 📝 Licencia
-
-MIT License - Uso libre para proyectos personales
 
 ## 🐛 Troubleshooting
 
@@ -286,25 +213,6 @@ SCREENSHOT_ON_ERROR=true
 SAVE_SCREENSHOTS=false
 ```
 
-### Buscar otros productos
-
-```env
-# En .env
-TARGET_PRODUCT=MacBook Pro
-TARGET_STATE=California
-```
-
-## 🚀 Próximos pasos
-
-Una vez que el scraping funcione correctamente:
-
-- [ ] Añadir bot de Telegram para notificaciones
-- [ ] Implementar scheduler para ejecuciones automáticas
-- [ ] Dashboard web para monitoreo
-- [ ] Soporte para múltiples productos simultáneos
-- [ ] Integración con Discord
-- [ ] Soporte para otras tiendas (Best Buy, Amazon)
-
 ## 📝 Notas Importantes
 
 ### ⚠️ Selectores CSS
@@ -329,27 +237,6 @@ Sé respetuoso con Apple Store:
 ## 📄 Licencia
 
 MIT License - Ver archivo `LICENSE`
-
-## ⚠️ Disclaimer
-
-Este proyecto es para fines educativos y personales. No está afiliado con Apple Inc. El web scraping puede violar términos de servicio de algunos sitios. Usa bajo tu propia responsabilidad y asegúrate de cumplir con las leyes aplicables.
-
-## 📞 Soporte
-
-Si tienes problemas:
-
-1. Revisa esta documentación
-2. Ejecuta con `--headless=false` para ver el navegador
-3. Revisa los logs en `logs/`
-4. Revisa los screenshots en `screenshots/`
-5. Verifica que los selectores CSS estén actualizados
-
----
-
-**Creado para monitorear disponibilidad de productos Apple 🍎**
-
-*Última actualización: Enero 2026*
-
 
 ## 📋 Características
 
@@ -431,23 +318,15 @@ TELEGRAM_CHAT_ID=tu_chat_id_real_aqui
 
 ## 📖 Uso
 
-### Iniciar bot (modo automático)
+### Ejecutar verificación
 
-Ejecuta verificaciones automáticas según el horario configurado:
+Ejecuta una única verificación de disponibilidad:
 
 ```bash
 python main.py
 ```
 
-El bot se mantendrá corriendo y ejecutará verificaciones en el horario programado.
-
-### Verificación manual (una vez)
-
-Ejecuta una verificación inmediata sin esperar al horario programado:
-
-```bash
-python main.py --check-now
-```
+Cada ejecución realiza una única verificación y termina (pensado para ser lanzado por un scheduler externo, ver systemd timer).
 
 ### Probar conexión con Telegram
 
@@ -457,12 +336,10 @@ Envía un mensaje de prueba para verificar que la configuración es correcta:
 python main.py --test-telegram
 ```
 
-### Probar scraper de Apple
-
-Verifica que Playwright puede acceder a Apple Store:
+### Probar conexión con Apple Store y Telegram
 
 ```bash
-python main.py --test-scraper
+python main.py --test
 ```
 
 ### Mostrar configuración
@@ -660,69 +537,55 @@ Sé considerado con Apple Store:
 - El bot está diseñado para 1 verificación diaria
 - Apple puede bloquear IPs con tráfico excesivo
 
-## 🚀 Despliegue en Producción
-
-### Opción 1: Servidor Linux (VPS)
+## Configuración de Playwright en Ubuntu 26.04
 
 ```bash
-# Instalar dependencias del sistema
-sudo apt update
-sudo apt install python3 python3-pip
+# Actualizar playwright a última versión (necesario para que reconozca Ubuntu 26.04)
+pip install --upgrade playwright
 
-# Clonar proyecto
-git clone <tu-repo>
-cd apple-stock-bot
-
-# Instalar dependencias
-pip3 install -r requirements.txt
+# Instalar Chromium y dependencias del sistema
 playwright install chromium
 playwright install-deps
-
-# Configurar .env
-nano .env
-
-# Ejecutar con nohup
-nohup python3 main.py > output.log 2>&1 &
 ```
 
-### Opción 2: systemd service (Linux)
+## Automatización con systemd timer
 
-Crear `/etc/systemd/system/apple-bot.service`:
+```bash
+# Crear el servicio
+sudo nano /etc/systemd/system/stockapple.service
+```
 
 ```ini
 [Unit]
-Description=Apple Stock Bot
-After=network.target
+Description=StockApple - chequeo de stock iPhone
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-Type=simple
-User=tu-usuario
-WorkingDirectory=/ruta/a/apple-stock-bot
-ExecStart=/ruta/a/venv/bin/python main.py
-Restart=always
+Type=oneshot
+User=jaxi
+WorkingDirectory=/home/jaxi/Documentos/stockApple
+ExecStart=/home/jaxi/Documentos/stockApple/.venv/bin/python main.py
+StandardOutput=journal
+StandardError=journal
+```
+
+```bash
+# Crear el timer con los horarios de chequeo
+sudo nano /etc/systemd/system/stockapple.timer
+```
+
+```ini
+[Unit]
+Description=Timer para StockApple
+
+[Timer]
+OnCalendar=*-*-* 06,10,14,18,20:00:00
+Persistent=true
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=timers.target
 ```
-
-Activar:
-```bash
-sudo systemctl enable apple-bot
-sudo systemctl start apple-bot
-sudo systemctl status apple-bot
-```
-
-### Opción 3: Docker (próximamente)
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Añadir nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crea un Pull Request
 
 ## 📄 Licencia
 
@@ -731,27 +594,4 @@ Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detall
 ## ⚠️ Disclaimer
 
 Este bot es para uso educacional y personal. No está afiliado con Apple Inc. Usa este software bajo tu propia responsabilidad. El scraping puede violar los términos de servicio de algunos sitios web. Asegúrate de cumplir con todas las leyes y términos aplicables.
-
-## 📞 Soporte
-
-Si tienes problemas:
-
-1. Revisa esta documentación
-2. Revisa los logs en `logs/`
-3. Ejecuta los tests: `--test-telegram` y `--test-scraper`
-4. Abre un issue en GitHub con detalles completos
-
-## 🎯 Roadmap
-
-- [ ] Soporte para múltiples productos simultáneos
-- [ ] Dashboard web para monitoreo
-- [ ] Integración con Discord además de Telegram
-- [ ] Notificaciones basadas en umbrales de disponibilidad
-- [ ] Soporte para más tiendas (Best Buy, Amazon, etc.)
-- [ ] Docker container para despliegue fácil
-
 ---
-
-**Creado con ❤️ para monitorear stock de Apple**
-
-*Última actualización: Enero 2026*

@@ -14,6 +14,10 @@ from utils.cache_manager import CacheManager
 
 logger = logging.getLogger('AppleStockBot')
 
+# Producto y URL objetivo (hardcodeados: el scraper está fijado a esta configuración específica)
+PRODUCT_NAME = "iPhone 18 Pro Max"
+PRODUCT_URL = "https://www.apple.com/shop/buy-iphone/iphone-18-pro/6.9-inch-display-256gb-burgundy-unlocked"
+
 
 class AppleScraper:
     """
@@ -42,8 +46,8 @@ class AppleScraper:
                 'error': str (opcional)
             }
         """
-        logger.info(f"🔍 Iniciando scraping de: {self.config.TARGET_PRODUCT}")
-        logger.info(f"🌐 URL objetivo: {self.config.APPLE_STORE_URL}")
+        logger.info(f"🔍 Iniciando scraping de: {PRODUCT_NAME}")
+        logger.info(f"🌐 URL objetivo: {PRODUCT_URL}")
         
         with sync_playwright() as p:
             browser: Optional[Browser] = None
@@ -67,11 +71,10 @@ class AppleScraper:
                 
                 page = context.new_page()
                 
-                # Navegar directamente al iPhone 17 Pro configurado (6.9", 256GB, Silver, Unlocked)
-                logger.info("🌐 Navegando a configuración de iPhone 17 Pro...")
-                product_url = "https://www.apple.com/shop/buy-iphone/iphone-18-pro/6.9-inch-display-256gb-burgundy-unlocked"
+                # Navegar directamente al iPhone 18 Pro configurado (6.9", 256GB, Burgundy, Unlocked)
+                logger.info("🌐 Navegando a configuración de iPhone 18 Pro...")
                 response = page.goto(
-                    product_url, 
+                    PRODUCT_URL, 
                     wait_until='networkidle',
                     timeout=30000
                 )
@@ -90,23 +93,25 @@ class AppleScraper:
                     logger.info("📸 Guardando screenshot de página inicial...")
                     page.screenshot(path=f"{self.screenshot_dir}/initial_page.png")
                 
-                # Extraer datos de disponibilidad
-                result = self._extract_availability_data(page)
+                # Extraer datos de disponibilidad (por cada capacidad configurada)
+                capacities_result = self._extract_availability_data(page)
                 
                 # Cerrar navegador
                 context.close()
                 browser.close()
                 
-                logger.info(f"✅ Scraping completado - Encontradas {len(result['available_stores'])} tiendas con stock")
+                total_available = sum(len(c['available_stores']) for c in capacities_result.values())
+                logger.info(f"✅ Scraping completado - Encontradas {total_available} tiendas con stock (todas las capacidades)")
                 
-                # Usar el título del producto de la API si está disponible, sino usar el de config
-                product_name = result.get('product_title') or self.config.TARGET_PRODUCT
+                # Usar el título del producto de la primera capacidad como referencia general
+                first_capacity_data = next(iter(capacities_result.values()), {})
+                product_name = first_capacity_data.get('product_title') or PRODUCT_NAME
                 
                 return {
                     'success': True,
                     'timestamp': datetime.now().isoformat(),
                     'product': product_name,
-                    **result
+                    'capacities': capacities_result
                 }
                 
             except PlaywrightTimeout as e:
@@ -129,39 +134,25 @@ class AppleScraper:
                     except:
                         pass
     
-    def _extract_availability_data(self, page: Page) -> Dict[str, Any]:
+    def _extract_availability_data(self, page: Page) -> Dict[str, Dict[str, Any]]:
         """
-        Extrae datos de disponibilidad de la página de Apple Store
+        Extrae datos de disponibilidad de la página de Apple Store para todas
+        las capacidades configuradas (ej. 256gb, 512gb)
         
         Args:
             page: Página de Playwright
         
         Returns:
-            dict con listas de tiendas disponibles/no disponibles y título del producto
+            dict: {
+                '256gb': {'available_stores': [...], 'unavailable_stores': [...], 'product_title': str},
+                '512gb': {...}
+            }
         """
         
-        available_stores = []
-        unavailable_stores = []
-        product_title = None
+        capacities = self.config.TARGET_CAPACITIES
+        results_by_capacity: Dict[str, Dict[str, Any]] = {}
         
-        logger.info("🔎 Extrayendo datos de disponibilidad...")
-        
-        # Variable para capturar la respuesta de la API
-        fulfillment_data = None
-        
-        # Interceptor de respuestas de red
-        def handle_response(response):
-            nonlocal fulfillment_data
-            if 'fulfillment-messages' in response.url:
-                logger.info(f"🎯 API interceptada: {response.url}")
-                try:
-                    fulfillment_data = response.json()
-                    logger.info(f"✓ Datos de disponibilidad capturados")
-                except Exception as e:
-                    logger.error(f"❌ Error parseando respuesta: {e}")
-        
-        # Configurar interceptor
-        page.on("response", handle_response)
+        logger.info(f"🔎 Extrayendo datos de disponibilidad para capacidades: {capacities}")
         
         try:
             # 🔍 INSPECCIÓN: Página inicial del producto
@@ -194,20 +185,26 @@ class AppleScraper:
             logger.info("🔢 PASO 3: Ingresando 'Miami' en el buscador...")
             search_input = 'input[data-autom="zipCode"]'
             page.wait_for_selector(search_input, timeout=10000)
-            page.fill(search_input, 'Miami')
+            page.fill(search_input, '33133')
             logger.info("✓ 'Miami' ingresado")
             
-            # PASO 4: Esperar al fetch y hacer click en "Miami, FL"
+            # PASO 4: Esperar al fetch y hacer click en "Miami, FL", capturando el fulfillment
+            # de la primera capacidad (la que ya viene preseleccionada en la URL del producto)
             logger.info("⏳ PASO 4: Esperando opciones del autocomplete...")
             miami_option = 'li[role="option"][data-option-index="0"]'
             page.wait_for_selector(miami_option, timeout=10000)
             page.wait_for_timeout(1000)  # Esperar a que se complete el fetch
-            page.click(miami_option)
-            logger.info("✓ 'Miami, FL' seleccionado")
             
-            # PASO 5: Esperar a que se haga la petición a la API
-            logger.info("⏳ PASO 5: Esperando respuesta de la API de disponibilidad...")
-            page.wait_for_timeout(3000)  # Dar tiempo a la API para responder
+            first_capacity = capacities[0]
+            logger.info(f"⏳ PASO 5: Esperando respuesta de la API de disponibilidad ({first_capacity})...")
+            with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=15000) as resp_info:
+                page.click(miami_option)
+                logger.info("✓ 'Miami, FL' seleccionado")
+            
+            fulfillment_data = self._safe_response_json(resp_info.value)
+            results_by_capacity[first_capacity] = self._process_capacity_response(
+                fulfillment_data, first_capacity
+            )
             
             # 🔍 INSPECCIÓN FINAL: Resultados en el modal
             if self.config.PLAYWRIGHT_DEBUG:
@@ -219,32 +216,77 @@ class AppleScraper:
                 page.screenshot(path=f"{self.screenshot_dir}/availability_modal.png")
                 logger.info("📸 Screenshot del modal de disponibilidad")
             
-            # PASO 6: Procesar los datos capturados de la API
-            if fulfillment_data:
-                logger.info("📊 Procesando datos de disponibilidad...")
-                available_stores, unavailable_stores, product_title = self._parse_fulfillment_data(fulfillment_data)
-                logger.info(f"✅ Encontradas {len(available_stores)} tiendas con stock")
-                logger.info(f"📊 Total de {len(unavailable_stores)} tiendas sin stock")
-            else:
-                logger.warning("⚠️ No se capturaron datos de la API de disponibilidad")
-                logger.info("💡 Recomendación: Verifica que el interceptor esté funcionando correctamente")
+            # PASO 6: Repetir la consulta para el resto de capacidades configuradas
+            # cambiando el radio de capacidad dentro del mismo modal
+            for capacity in capacities[1:]:
+                logger.info(f"🔁 PASO 6: Cambiando a capacidad {capacity} dentro del modal...")
+                capacity_radio = f'input[name="pl_dimensionCapacity"][value="{capacity}"]'
+                
+                try:
+                    page.wait_for_selector(capacity_radio, timeout=10000)
+                    
+                    with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=15000) as resp_info:
+                        page.check(capacity_radio, force=True)
+                        logger.info(f"✓ Capacidad {capacity} seleccionada")
+                    
+                    fulfillment_data = self._safe_response_json(resp_info.value)
+                    results_by_capacity[capacity] = self._process_capacity_response(
+                        fulfillment_data, capacity
+                    )
+                except PlaywrightTimeout as e:
+                    logger.error(f"⏱️ Timeout esperando datos de capacidad {capacity}: {e}")
+                    results_by_capacity[capacity] = {
+                        'available_stores': [],
+                        'unavailable_stores': [],
+                        'product_title': None
+                    }
         
         except Exception as e:
             logger.error(f"❌ Error extrayendo datos: {e}", exc_info=True)
             raise
         
+        return results_by_capacity
+    
+    def _safe_response_json(self, response) -> Optional[Dict[str, Any]]:
+        """Parsea de forma segura el JSON de una respuesta de red"""
+        try:
+            data = response.json()
+            logger.info(f"🎯 API interceptada: {response.url}")
+            return data
+        except Exception as e:
+            logger.error(f"❌ Error parseando respuesta: {e}")
+            return None
+    
+    def _process_capacity_response(self, fulfillment_data: Optional[Dict[str, Any]], capacity: str) -> Dict[str, Any]:
+        """Procesa la respuesta de fulfillment-messages para una capacidad específica"""
+        if not fulfillment_data:
+            logger.warning(f"⚠️ No se capturaron datos de la API para {capacity}")
+            return {
+                'available_stores': [],
+                'unavailable_stores': [],
+                'product_title': None
+            }
+        
+        logger.info(f"📊 Procesando datos de disponibilidad ({capacity})...")
+        available_stores, unavailable_stores, product_title = self._parse_fulfillment_data(
+            fulfillment_data, capacity
+        )
+        logger.info(f"✅ [{capacity}] Encontradas {len(available_stores)} tiendas con stock")
+        logger.info(f"📊 [{capacity}] Total de {len(unavailable_stores)} tiendas sin stock")
+        
         return {
             'available_stores': available_stores,
             'unavailable_stores': unavailable_stores,
-            'product_title': product_title  # Título completo del producto desde la API
+            'product_title': product_title
         }
     
-    def _parse_fulfillment_data(self, data: Dict[str, Any]) -> tuple[List[Dict[str, str]], List[Dict[str, str]], str]:
+    def _parse_fulfillment_data(self, data: Dict[str, Any], capacity: str = 'default') -> tuple[List[Dict[str, str]], List[Dict[str, str]], str]:
         """
         Parsea los datos de la API de fulfillment-messages para extraer disponibilidad
         
         Args:
             data: JSON response de la API de fulfillment
+            capacity: capacidad asociada a esta respuesta (para logs y debug file)
         
         Returns:
             tuple: (available_stores, unavailable_stores, product_title)
@@ -254,11 +296,11 @@ class AppleScraper:
         product_title = None
         
         try:
-            logger.info("🔍 Analizando datos de la API...")
+            logger.info(f"🔍 Analizando datos de la API ({capacity})...")
             
-            # DEBUG: Guardar respuesta completa para inspección
+            # DEBUG: Guardar respuesta completa para inspección (un archivo por capacidad)
             import json
-            debug_file = f"{self.screenshot_dir}/api_response_debug.json"
+            debug_file = f"{self.screenshot_dir}/api_response_debug_{capacity}.json"
             with open(debug_file, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             logger.info(f"💾 Respuesta API guardada en: {debug_file}")
@@ -369,9 +411,9 @@ class AppleScraper:
         except Exception as e:
             logger.error(f"❌ Error parseando datos de fulfillment: {e}", exc_info=True)
         
-        # Si no se pudo extraer el título del producto, usar el de config como fallback
+        # Si no se pudo extraer el título del producto, usar el fallback hardcodeado
         if not product_title:
-            product_title = self.config.TARGET_PRODUCT
+            product_title = PRODUCT_NAME
             logger.warning(f"⚠️ No se pudo extraer título del producto, usando: {product_title}")
         
         return available_stores, unavailable_stores, product_title
@@ -417,10 +459,9 @@ class AppleScraper:
         return {
             'success': False,
             'timestamp': datetime.now().isoformat(),
-            'product': self.config.TARGET_PRODUCT,
+            'product': PRODUCT_NAME,
             'error': error_message,
-            'available_stores': [],
-            'unavailable_stores': []
+            'capacities': {}
         }
     
     def test_connection(self) -> bool:
@@ -436,7 +477,7 @@ class AppleScraper:
             try:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
-                response = page.goto(self.config.APPLE_STORE_URL, timeout=15000)
+                response = page.goto("https://www.apple.com/shop/buy-iphone", timeout=15000)
                 browser.close()
                 
                 if response and response.ok:
@@ -490,7 +531,7 @@ class AppleScraper:
         else:
             logger.info("📦 Sin caché previo - Primera ejecución")
         
-        # PASO 1-5: Ejecutar scraping normal (abre, interactúa, intercepta, extrae)
+        # PASO 1-5: Ejecutar scraping normal (abre, interactúa, intercepta, extrae todas las capacidades)
         logger.info("🕷️ PASO 1-5: Ejecutando scraping...")
         scraping_result = self.check_availability()
         
@@ -501,11 +542,12 @@ class AppleScraper:
                 **scraping_result,
                 'has_changes': False,
                 'should_alert': False,
-                'changes': {},
+                'changes_by_capacity': {},
                 'cache_age': cache_age
             }
         
-        logger.info(f"✅ Scraping completado - {len(scraping_result['available_stores'])} tiendas con stock")
+        capacities_summary = {cap: len(data['available_stores']) for cap, data in scraping_result['capacities'].items()}
+        logger.info(f"✅ Scraping completado - tiendas con stock por capacidad: {capacities_summary}")
         
         # PASO 6: Comparar con caché
         logger.info("🔍 PASO 6: Comparando con caché...")
@@ -542,7 +584,7 @@ class AppleScraper:
             **scraping_result,
             'has_changes': has_changes,
             'should_alert': should_alert,
-            'changes': comparison['changes'],
+            'changes_by_capacity': comparison['changes_by_capacity'],
             'summary': comparison['summary'],
             'cache_age': cache_age,
             'is_first_run': is_first_run

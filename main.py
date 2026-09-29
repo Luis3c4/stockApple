@@ -57,19 +57,15 @@ def run_scraper(show_browser: bool = False) -> dict:
         # Mostrar resultados
         display_results(result)
         
-        # 🔔 SOLO ENVIAR NOTIFICACIÓN SI HAY CAMBIOS
-        if Config.TELEGRAM_ENABLED:
-            if result.get('should_alert', False):
-                logger.info("📱 HAY CAMBIOS - Enviando notificación a Telegram...")
-                try:
-                    from services.telegram_bot import TelegramBot
-                    telegram = TelegramBot()
-                    telegram.send_availability_report(result)
-                    logger.info("✅ Notificación enviada exitosamente")
-                except Exception as e:
-                    logger.error(f"❌ Error enviando notificación a Telegram: {e}", exc_info=True)
-            else:
-                logger.info("ℹ️ Sin cambios - No se enviará notificación a Telegram")
+        # 🔔 SIEMPRE ENVIAR NOTIFICACIÓN (con o sin cambios)
+        logger.info("📱 Enviando notificación a Telegram...")
+        try:
+            from services.telegram_bot import TelegramBot
+            telegram = TelegramBot()
+            telegram.send_availability_report(result)
+            logger.info("✅ Notificación enviada exitosamente")
+        except Exception as e:
+            logger.error(f"❌ Error enviando notificación a Telegram: {e}", exc_info=True)
         
         return result
         
@@ -108,67 +104,72 @@ def display_results(result: dict) -> None:
         elif result['has_changes']:
             logger.info(f"🔔 Estado: CAMBIOS DETECTADOS")
             logger.info(f"   {result.get('summary', '')}")
-            
-            # Mostrar detalles de cambios
-            changes = result.get('changes', {})
-            if changes.get('new_available'):
-                logger.info(f"   ✨ {len(changes['new_available'])} tienda(s) con NUEVO stock")
-            if changes.get('new_unavailable'):
-                logger.info(f"   ⚠️ {len(changes['new_unavailable'])} tienda(s) AGOTARON stock")
         else:
             logger.info(f"ℹ️ Estado: Sin cambios desde última verificación")
             logger.info(f"   {result.get('summary', '')}")
     
     logger.info("")
     
-    available = result.get('available_stores', [])
-    unavailable = result.get('unavailable_stores', [])
+    capacities = result.get('capacities', {})
+    changes_by_capacity = result.get('changes_by_capacity', {})
     
-    # Si hay cambios, mostrar primero los cambios destacados
-    if result.get('has_changes') and not result.get('is_first_run'):
-        changes = result.get('changes', {})
+    for capacity, capacity_data in capacities.items():
+        available = capacity_data.get('available_stores', [])
+        unavailable = capacity_data.get('unavailable_stores', [])
         
-        if changes.get('new_available'):
-            logger.info(f"✨ NUEVO STOCK ({len(changes['new_available'])} tienda(s)):")
-            for i, store in enumerate(changes['new_available'], 1):
-                logger.info(f"   {i}. 🎉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
-                logger.info(f"      {store.get('pickup_quote', '')}")
+        logger.info("─" * 70)
+        logger.info(f"📦 CAPACIDAD: {capacity.upper()}")
+        logger.info("─" * 70)
+        
+        # Si hay cambios para esta capacidad, mostrarlos primero
+        capacity_changes = changes_by_capacity.get(capacity, {})
+        if result.get('has_changes') and not result.get('is_first_run') and capacity_changes:
+            if capacity_changes.get('new_available'):
+                logger.info(f"✨ NUEVO STOCK ({len(capacity_changes['new_available'])} tienda(s)):")
+                for i, store in enumerate(capacity_changes['new_available'], 1):
+                    logger.info(f"   {i}. 🎉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+                    logger.info(f"      {store.get('pickup_quote', '')}")
+                logger.info("")
+            
+            if capacity_changes.get('new_unavailable'):
+                logger.info(f"⚠️ STOCK AGOTADO ({len(capacity_changes['new_unavailable'])} tienda(s)):")
+                for i, store in enumerate(capacity_changes['new_unavailable'], 1):
+                    logger.info(f"   {i}. 📉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+                logger.info("")
+        
+        # Resumen de todas las tiendas para esta capacidad
+        if available:
+            logger.info(f"✅ DISPONIBLE en {len(available)} tienda(s) (total):")
+            for i, store in enumerate(available, 1):
+                name = store.get('name', 'Unknown')
+                city = store.get('city', '')
+                state = store.get('state', '')
+                logger.info(f"   {i}. {name} - {city}, {state}")
             logger.info("")
         
-        if changes.get('new_unavailable'):
-            logger.info(f"⚠️ STOCK AGOTADO ({len(changes['new_unavailable'])} tienda(s)):")
-            for i, store in enumerate(changes['new_unavailable'], 1):
-                logger.info(f"   {i}. 📉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+        if unavailable:
+            logger.info(f"❌ No disponible en {len(unavailable)} tienda(s):")
+            for store in unavailable[:5]:  # Mostrar máximo 5
+                name = store.get('name', 'Unknown')
+                city = store.get('city', '')
+                state = store.get('state', '')
+                logger.info(f"   • {name} - {city}, {state}")
+            if len(unavailable) > 5:
+                logger.info(f"   ... y {len(unavailable) - 5} más")
             logger.info("")
-    
-    # Resumen de todas las tiendas
-    if available:
-        logger.info(f"✅ DISPONIBLE en {len(available)} tienda(s) (total):")
-        for i, store in enumerate(available, 1):
-            name = store.get('name', 'Unknown')
-            city = store.get('city', '')
-            state = store.get('state', '')
-            logger.info(f"   {i}. {name} - {city}, {state}")
+        
+        if not available and not unavailable:
+            logger.warning(f"⚠️ [{capacity}] No se encontraron datos de disponibilidad")
+        
+        total = len(available) + len(unavailable)
+        logger.info(f"📊 [{capacity}] Total: {len(available)} disponible(s) de {total} tienda(s) verificadas")
         logger.info("")
     
-    if unavailable:
-        logger.info(f"❌ No disponible en {len(unavailable)} tienda(s):")
-        for store in unavailable[:5]:  # Mostrar máximo 5
-            name = store.get('name', 'Unknown')
-            city = store.get('city', '')
-            state = store.get('state', '')
-            logger.info(f"   • {name} - {city}, {state}")
-        if len(unavailable) > 5:
-            logger.info(f"   ... y {len(unavailable) - 5} más")
-        logger.info("")
-    
-    if not available and not unavailable:
+    if not capacities:
         logger.warning("⚠️ No se encontraron datos de disponibilidad")
         logger.info("💡 Ejecuta con --headless=false para ver qué está pasando")
         logger.info("💡 Revisa screenshots/ para capturas de pantalla")
     
-    total = len(available) + len(unavailable)
-    logger.info(f"📊 Total: {len(available)} disponible(s) de {total} tienda(s) verificadas")
     logger.info("=" * 70)
 
 
@@ -203,19 +204,15 @@ def test_connection() -> None:
         if not apple_ok:
             logger.error("❌ No se pudo conectar con Apple Store")
         
-        # Test Telegram si está habilitado
-        if Config.TELEGRAM_ENABLED:
-            logger.info("")
-            logger.info("🧪 Probando conexión con Telegram...")
-            from services.telegram_bot import TelegramBot
-            telegram = TelegramBot()
-            telegram_ok = telegram.test_connection()
-            
-            if not telegram_ok:
-                logger.error("❌ No se pudo conectar con Telegram")
-        else:
-            logger.info("📱 Telegram deshabilitado (TELEGRAM_ENABLED=false)")
-            telegram_ok = False
+        # Test Telegram
+        logger.info("")
+        logger.info("🧪 Probando conexión con Telegram...")
+        from services.telegram_bot import TelegramBot
+        telegram = TelegramBot()
+        telegram_ok = telegram.test_connection()
+        
+        if not telegram_ok:
+            logger.error("❌ No se pudo conectar con Telegram")
         
         # Resumen
         logger.info("")
@@ -223,8 +220,7 @@ def test_connection() -> None:
         logger.info("📊 RESUMEN DE PRUEBAS")
         logger.info("=" * 70)
         logger.info(f"🌐 Apple Store: {'✅ OK' if apple_ok else '❌ FALLO'}")
-        if Config.TELEGRAM_ENABLED:
-            logger.info(f"📱 Telegram:    {'✅ OK' if telegram_ok else '❌ FALLO'}")
+        logger.info(f"📱 Telegram:    {'✅ OK' if telegram_ok else '❌ FALLO'}")
         logger.info("=" * 70)
         
         if not apple_ok:
@@ -310,11 +306,6 @@ Para más información: README.md
         
         if args.test_telegram:
             logger.info("🧪 Probando solo Telegram...")
-            if not Config.TELEGRAM_ENABLED:
-                logger.warning("⚠️ Telegram está deshabilitado")
-                logger.info("💡 Configura TELEGRAM_ENABLED=true en .env")
-                return
-            
             from services.telegram_bot import TelegramBot
             telegram = TelegramBot()
             if telegram.test_connection():

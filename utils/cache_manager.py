@@ -75,92 +75,107 @@ class CacheManager:
     
     def compare_with_cache(self, new_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Compara los datos nuevos con el caché para detectar cambios
+        Compara los datos nuevos con el caché para detectar cambios, por cada capacidad
         
         Args:
-            new_data: Nuevos datos del scraper
+            new_data: Nuevos datos del scraper: {'capacities': {'256gb': {...}, '512gb': {...}}}
         
         Returns:
             dict: {
                 'has_changes': bool,
-                'changes': {
-                    'new_available': list[dict],      # Tiendas que ahora tienen stock
-                    'new_unavailable': list[dict],    # Tiendas que ahora NO tienen stock
-                    'still_available': list[dict],    # Tiendas que siguen con stock
-                    'still_unavailable': list[dict]   # Tiendas que siguen sin stock
+                'is_first_run': bool,
+                'changes_by_capacity': {
+                    '256gb': {
+                        'new_available': list[dict],
+                        'new_unavailable': list[dict],
+                        'still_available': list[dict],
+                        'still_unavailable': list[dict]
+                    },
+                    '512gb': {...}
                 },
                 'summary': str
             }
         """
         cached_data = self.load_cache()
+        new_capacities = new_data.get('capacities', {})
         
-        # Si no hay caché, todo es nuevo
+        # Si no hay caché, todo es nuevo para todas las capacidades
         if cached_data is None:
             logger.info("🆕 Primera ejecución - No hay caché previo para comparar")
+            changes_by_capacity = {
+                capacity: {
+                    'new_available': capacity_data.get('available_stores', []),
+                    'new_unavailable': [],
+                    'still_available': [],
+                    'still_unavailable': capacity_data.get('unavailable_stores', [])
+                }
+                for capacity, capacity_data in new_capacities.items()
+            }
             return {
                 'has_changes': True,  # Primera vez se considera cambio
                 'is_first_run': True,
-                'changes': {
-                    'new_available': new_data.get('available_stores', []),
-                    'new_unavailable': [],
-                    'still_available': [],
-                    'still_unavailable': new_data.get('unavailable_stores', [])
-                },
+                'changes_by_capacity': changes_by_capacity,
                 'summary': 'Primera ejecución - Datos iniciales capturados'
             }
         
-        # Comparar disponibilidad
-        old_available = {s['store_number']: s for s in cached_data.get('available_stores', [])}
-        old_unavailable = {s['store_number']: s for s in cached_data.get('unavailable_stores', [])}
-        
-        new_available = {s['store_number']: s for s in new_data.get('available_stores', [])}
-        new_unavailable = {s['store_number']: s for s in new_data.get('unavailable_stores', [])}
-        
-        # Detectar cambios
-        changes = {
-            'new_available': [],      # Ahora disponible (antes no lo estaba)
-            'new_unavailable': [],    # Ahora NO disponible (antes sí lo estaba)
-            'still_available': [],    # Sigue disponible
-            'still_unavailable': []   # Sigue NO disponible
-        }
-        
-        # Tiendas que ahora tienen stock (antes no tenían)
-        for store_num, store_data in new_available.items():
-            if store_num in old_unavailable:
-                changes['new_available'].append(store_data)
-                logger.info(f"✨ NUEVO STOCK: {store_data['name']} ({store_data['city']}, {store_data['state']})")
-            elif store_num in old_available:
-                changes['still_available'].append(store_data)
-        
-        # Tiendas que ahora NO tienen stock (antes sí tenían)
-        for store_num, store_data in new_unavailable.items():
-            if store_num in old_available:
-                changes['new_unavailable'].append(store_data)
-                logger.info(f"⚠️ STOCK AGOTADO: {store_data['name']} ({store_data['city']}, {store_data['state']})")
-            elif store_num in old_unavailable:
-                changes['still_unavailable'].append(store_data)
-        
-        # Determinar si hubo cambios significativos
-        has_changes = len(changes['new_available']) > 0 or len(changes['new_unavailable']) > 0
-        
-        # Generar resumen
+        cached_capacities = cached_data.get('capacities', {})
+        changes_by_capacity = {}
+        has_changes = False
         summary_parts = []
-        if changes['new_available']:
-            summary_parts.append(f"{len(changes['new_available'])} tienda(s) con nuevo stock")
-        if changes['new_unavailable']:
-            summary_parts.append(f"{len(changes['new_unavailable'])} tienda(s) agotaron stock")
+        
+        for capacity, capacity_data in new_capacities.items():
+            cached_capacity_data = cached_capacities.get(capacity, {})
+            
+            old_available = {s['store_number']: s for s in cached_capacity_data.get('available_stores', [])}
+            old_unavailable = {s['store_number']: s for s in cached_capacity_data.get('unavailable_stores', [])}
+            
+            new_available = {s['store_number']: s for s in capacity_data.get('available_stores', [])}
+            new_unavailable = {s['store_number']: s for s in capacity_data.get('unavailable_stores', [])}
+            
+            changes = {
+                'new_available': [],      # Ahora disponible (antes no lo estaba)
+                'new_unavailable': [],    # Ahora NO disponible (antes sí lo estaba)
+                'still_available': [],    # Sigue disponible
+                'still_unavailable': []   # Sigue NO disponible
+            }
+            
+            # Tiendas que ahora tienen stock (antes no tenían)
+            for store_num, store_data in new_available.items():
+                if store_num in old_unavailable:
+                    changes['new_available'].append(store_data)
+                    logger.info(f"✨ [{capacity}] NUEVO STOCK: {store_data['name']} ({store_data['city']}, {store_data['state']})")
+                elif store_num in old_available:
+                    changes['still_available'].append(store_data)
+            
+            # Tiendas que ahora NO tienen stock (antes sí tenían)
+            for store_num, store_data in new_unavailable.items():
+                if store_num in old_available:
+                    changes['new_unavailable'].append(store_data)
+                    logger.info(f"⚠️ [{capacity}] STOCK AGOTADO: {store_data['name']} ({store_data['city']}, {store_data['state']})")
+                elif store_num in old_unavailable:
+                    changes['still_unavailable'].append(store_data)
+            
+            capacity_has_changes = len(changes['new_available']) > 0 or len(changes['new_unavailable']) > 0
+            has_changes = has_changes or capacity_has_changes
+            
+            if changes['new_available']:
+                summary_parts.append(f"[{capacity}] {len(changes['new_available'])} tienda(s) con nuevo stock")
+            if changes['new_unavailable']:
+                summary_parts.append(f"[{capacity}] {len(changes['new_unavailable'])} tienda(s) agotaron stock")
+            
+            changes_by_capacity[capacity] = changes
         
         if has_changes:
             summary = "CAMBIOS DETECTADOS: " + ", ".join(summary_parts)
             logger.info(f"🔔 {summary}")
         else:
-            summary = f"Sin cambios - {len(changes['still_available'])} con stock, {len(changes['still_unavailable'])} sin stock"
+            summary = "Sin cambios en ninguna capacidad"
             logger.info(f"ℹ️ {summary}")
         
         return {
             'has_changes': has_changes,
             'is_first_run': False,
-            'changes': changes,
+            'changes_by_capacity': changes_by_capacity,
             'summary': summary
         }
     

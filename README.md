@@ -8,8 +8,8 @@ Bot automatizado para monitorear disponibilidad de productos Apple en tiendas es
 ## 📋 Características
 
 - 🤖 **Scraping inteligente** - Navegación con Playwright interceptando API real
-- 🔁 **Sistema de caché** - Solo alerta cuando hay cambios reales
-- 📱 **Telegram** - Notificaciones automáticas de cambios de stock
+- 🔁 **Sistema de caché** - Compara con la última verificación
+- 📱 **Telegram** - Notificación en cada ejecución (con o sin cambios)
 - 📊 **Logs detallados** - Tracking completo con rotación diaria
 - 🔧 **Timeout inteligente** - 5 minutos máximo por ejecución
 
@@ -30,11 +30,8 @@ Edita `.env`:
 ```env
 PLAYWRIGHT_HEADLESS=true
 PLAYWRIGHT_DEBUG=false
-TELEGRAM_ENABLED=true
 TELEGRAM_BOT_TOKEN=tu_token_aqui
 TELEGRAM_CHAT_ID=tu_chat_id_aqui
-TARGET_PRODUCT=iPhone 17 Pro Max
-TARGET_STATE=Florida
 ```
 
 ### 3️⃣ Probar manualmente
@@ -50,13 +47,13 @@ python main.py
 1. 🌐 Scraping con Playwright
 2. 📡 Intercepta API de Apple (fulfillment-messages)
 3. 🔍 Compara con caché anterior
-4. 🔔 **Solo alerta si hay cambios**
+4. 🔔 **Siempre notifica** (mensaje detallado si hay cambios, mensaje corto "aún sin stock" si no los hay)
 5. 💾 Actualiza caché
 
 **Detecta:**
 - ✨ Nuevas tiendas con stock
 - 📉 Tiendas que agotaron stock
-- ✅ Sin cambios (no envía alerta)
+- ✅ Sin cambios (notifica con mensaje corto)
 
 **Ubicación:** `cache/availability_cache.json`
 
@@ -65,21 +62,12 @@ python main.py
 ## ⚙️ Configuración (.env)
 
 ```env
-# Producto a monitorear
-TARGET_PRODUCT=iPhone 17 Pro Max
-TARGET_CAPACITY=256GB
-TARGET_COLOR=Silver
-
-# Región
-TARGET_STATE=Florida
-
 # Playwright
 PLAYWRIGHT_HEADLESS=true
 PLAYWRIGHT_DEBUG=false
 SAVE_SCREENSHOTS=false
 
 # Telegram
-TELEGRAM_ENABLED=true
 TELEGRAM_BOT_TOKEN=tu_token
 TELEGRAM_CHAT_ID=tu_chat_id
 ```
@@ -133,7 +121,6 @@ apple-store-scraper/
 ## 🔧 Troubleshooting
 
 ### No recibo notificaciones Telegram
-- Verifica `TELEGRAM_ENABLED=true`
 - Confirma token y chat_id correctos
 - Prueba manualmente: `python main.py`
 
@@ -161,18 +148,15 @@ playwright install chromium
 
 ### El scraper no encuentra productos
 
-1. **Verifica la URL:**
-   - Asegúrate que `APPLE_STORE_URL` sea correcta
-
-2. **Ejecuta en modo visible:**
+1. **Ejecuta en modo visible:**
    ```bash
    python main.py --headless=false
    ```
 
-3. **Revisa los screenshots:**
+2. **Revisa los screenshots:**
    - Chequea `screenshots/` para ver qué está capturando
 
-4. **Actualiza los selectores:**
+3. **Actualiza los selectores:**
    - Los selectores CSS en `apple_scraper.py` necesitan actualizarse
    - Apple cambia su estructura frecuentemente
 
@@ -359,26 +343,16 @@ Todas las configuraciones se manejan en el archivo `.env`:
 | Variable | Descripción | Valor por defecto |
 |----------|-------------|-------------------|
 | `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram | *(requerido)* |
-| `TELEGRAM_CHAT_ID` | ID del chat donde enviar mensajes | *(requerido)* |
-| `CHECK_HOUR` | Hora de verificación diaria (0-23) | `10` |
-| `CHECK_MINUTE` | Minuto de verificación (0-59) | `0` |
-| `TIMEZONE` | Zona horaria para el scheduler | `America/New_York` |
-| `TARGET_PRODUCT` | Producto a buscar | `iPhone 17` |
-| `TARGET_STATE` | Estado donde buscar tiendas | `Florida` |
+| `TELEGRAM_CHAT_ID` | ID del/los chat(s) donde enviar mensajes (separados por coma) | *(requerido)* |
+| `TARGET_CAPACITIES` | Capacidades a verificar (separadas por coma) | `256gb,512gb` |
 | `PLAYWRIGHT_HEADLESS` | Ejecutar navegador invisible | `true` |
 | `SCREENSHOT_ON_ERROR` | Guardar capturas en errores | `true` |
 
 ### Ejemplo de configuración personalizada
 
 ```env
-# Verificar a las 3:30 PM hora de California
-CHECK_HOUR=15
-CHECK_MINUTE=30
-TIMEZONE=America/Los_Angeles
-
-# Buscar iPhone 17 Pro Max
-TARGET_PRODUCT=iPhone 17 Pro Max
-TARGET_STATE=California
+# Capacidades a verificar
+TARGET_CAPACITIES=256gb,512gb
 
 # Ver el navegador durante scraping (útil para debug)
 PLAYWRIGHT_HEADLESS=false

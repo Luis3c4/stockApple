@@ -92,33 +92,14 @@ def display_results(result: dict) -> None:
     
     logger.info(f"📅 Timestamp: {result.get('timestamp', 'N/A')}")
     logger.info(f"📱 Producto: {result.get('product', 'N/A')}")
-    
-    # 📦 Información de caché
-    if 'cache_age' in result and result.get('cache_age'):
-        logger.info(f"📦 Caché anterior: {result['cache_age']} de antigüedad")
-    
-    # 🔔 Información de cambios
-    if 'has_changes' in result:
-        if result.get('is_first_run'):
-            logger.info(f"🆕 Estado: Primera ejecución - Datos iniciales")
-        elif result['has_changes']:
-            logger.info(f"🔔 Estado: CAMBIOS DETECTADOS")
-            logger.info(f"   {result.get('summary', '')}")
-        else:
-            logger.info(f"ℹ️ Estado: Sin cambios desde última verificación")
-            logger.info(f"   {result.get('summary', '')}")
-    
     logger.info("")
     
     colors = result.get('colors', {})
-    changes_by_color = result.get('changes_by_color', {})
     
     for color, color_data in colors.items():
         logger.info("=" * 70)
         logger.info(f"🎨 COLOR: {color.upper()}")
         logger.info("=" * 70)
-        
-        color_changes = changes_by_color.get(color, {})
         
         for capacity, capacity_data in color_data.items():
             available = capacity_data.get('available_stores', [])
@@ -127,22 +108,6 @@ def display_results(result: dict) -> None:
             logger.info("─" * 70)
             logger.info(f"📦 CAPACIDAD: {capacity.upper()}")
             logger.info("─" * 70)
-            
-            # Si hay cambios para esta capacidad, mostrarlos primero
-            capacity_changes = color_changes.get(capacity, {})
-            if result.get('has_changes') and not result.get('is_first_run') and capacity_changes:
-                if capacity_changes.get('new_available'):
-                    logger.info(f"✨ NUEVO STOCK ({len(capacity_changes['new_available'])} tienda(s)):")
-                    for i, store in enumerate(capacity_changes['new_available'], 1):
-                        logger.info(f"   {i}. 🎉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
-                        logger.info(f"      {store.get('pickup_quote', '')}")
-                    logger.info("")
-                
-                if capacity_changes.get('new_unavailable'):
-                    logger.info(f"⚠️ STOCK AGOTADO ({len(capacity_changes['new_unavailable'])} tienda(s)):")
-                    for i, store in enumerate(capacity_changes['new_unavailable'], 1):
-                        logger.info(f"   {i}. 📉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
-                    logger.info("")
             
             # Resumen de todas las tiendas para esta capacidad
             if available:

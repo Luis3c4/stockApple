@@ -67,8 +67,7 @@ class TelegramBot:
     
     def send_availability_report(self, result: Dict[str, Any]) -> bool:
         """
-        Envía un reporte formateado de disponibilidad
-        Prioriza mostrar cambios si están disponibles
+        Envía un reporte formateado de disponibilidad (siempre con los datos actuales del scrap)
         
         Args:
             result: Diccionario con resultados del scraping
@@ -77,52 +76,16 @@ class TelegramBot:
             bool: True si se envió correctamente
         """
         if not result.get('success', False):
-            # Enviar mensaje de error
             message = self._format_error_message(result)
-            return self.send_message(message)
-        
-        # Sin cambios y sin stock en ninguna combinación color/capacidad → mensaje simple
-        if (
-            result.get('has_changes') is False
-            and not result.get('is_first_run', False)
-            and not any(
-                cap.get('available_stores')
-                for color_data in result.get('colors', {}).values()
-                for cap in color_data.values()
-            )
-        ):
-            message = self._format_no_stock_message(result)
-        # Si hay información de cambios, usar formato de cambios
-        elif result.get('has_changes') is not None and not result.get('is_first_run', False):
-            message = self._format_changes_message(result)
         else:
-            # Formato normal (primera ejecución o sin sistema de caché)
             message = self._format_availability_message(result)
         
         return self.send_message(message)
     
-    def _format_no_stock_message(self, result: Dict[str, Any]) -> str:
-        """
-        Mensaje simple para cuando no hay cambios ni stock disponible en ninguna combinación color/capacidad
-        
-        Args:
-            result: Resultados del scraping
-        
-        Returns:
-            str: Mensaje corto en HTML
-        """
-        product = _display_product_name(result.get('product', 'iPhone 17 Pro Max'))
-        combos = ", ".join(
-            f"{color.upper()} {capacity.upper()}"
-            for color, color_data in result.get('colors', {}).items()
-            for capacity in color_data.keys()
-        )
-        
-        return f"😔 Aún sin stock de <b>{product}</b> {combos}"
-    
     def _format_availability_message(self, result: Dict[str, Any]) -> str:
         """
-        Formatea el mensaje con los resultados de disponibilidad
+        Formatea el mensaje con los resultados de disponibilidad actuales.
+        Color = título de variante, capacidad = subtítulo, tiendas = texto normal.
         
         Args:
             result: Resultados del scraping
@@ -134,183 +97,34 @@ class TelegramBot:
         product = _display_product_name(result.get('product', 'iPhone 17 Pro Max'))
         timestamp = result.get('timestamp', '')
         
-        any_available = any(
-            cap.get('available_stores')
-            for color_data in colors.values()
-            for cap in color_data.values()
-        )
-        
-        # Encabezado
-        if any_available:
-            header = "🎉 <b>¡STOCK DISPONIBLE!</b>"
-        else:
-            header = "⚠️ <b>Sin Stock Disponible</b>"
-        
         message_parts = [
-            header,
             f"📱 <b>{product}</b>",
-            "",
-            f"🕐 <i>{timestamp[:19]}</i>",
+            f"🕐 {timestamp[:19]}",
             ""
         ]
         
         for color, color_data in colors.items():
-            message_parts.append("🎨 <b>" + color.upper() + "</b>")
-            message_parts.append("")
+            message_parts.append(f"<b>{color.upper()}</b>")
             
             for capacity, capacity_data in color_data.items():
                 available = capacity_data.get('available_stores', [])
-                unavailable = capacity_data.get('unavailable_stores', [])
-                emoji = "✅" if available else "❌"
                 
-                message_parts.append("━━━━━━━━━━━━━━━━━")
-                message_parts.append(f"<b>📦 {capacity.upper()}</b>")
+                message_parts.append(f"<i>{capacity.upper()}</i>")
+                
+                if not available:
+                    message_parts.append("Sin stock disponible en ninguna tienda")
+                else:
+                    for store in available[:5]:
+                        name = store.get('name', 'Unknown')
+                        city = store.get('city', '')
+                        state = store.get('state', '')
+                        message_parts.append(f"{name} - {city}, {state}")
+                    if len(available) > 5:
+                        message_parts.append("ℹ️ Hay más tiendas disponibles en la página de Apple")
+                
                 message_parts.append("")
-                
-                # Tiendas con stock
-                if available:
-                    message_parts.append(f"<b>{emoji} TIENDAS CON STOCK ({len(available)}):</b>")
-                    message_parts.append("")
-                    for store in available:
-                        name = store.get('name', 'Unknown')
-                        city = store.get('city', '')
-                        state = store.get('state', '')
-                        quote = store.get('pickup_quote', 'Available')
-                        message_parts.append(f"✅ <b>{name}</b>")
-                        message_parts.append(f"   📍 {city}, {state}")
-                        message_parts.append(f"   ⏰ {quote}")
-                        message_parts.append("")
-                
-                # Tiendas sin stock (limitar a 5 para no saturar)
-                if unavailable:
-                    count = min(5, len(unavailable))
-                    message_parts.append(f"<b>❌ SIN STOCK ({len(unavailable)}):</b>")
-                    if len(unavailable) > 5:
-                        message_parts.append(f"<i>(Mostrando {count} de {len(unavailable)})</i>")
-                    message_parts.append("")
-                    for store in unavailable[:count]:
-                        name = store.get('name', 'Unknown')
-                        city = store.get('city', '')
-                        quote = store.get('pickup_quote', 'Not Available')
-                        message_parts.append(f"❌ {name} ({city}) - {quote}")
-                    message_parts.append("")
         
-        message_parts.append("━━━━━━━━━━━━━━━━━")
-        message_parts.append("🤖 <i>Apple Stock Bot</i>")
-        
-        return "\n".join(message_parts)
-    
-    def _format_changes_message(self, result: Dict[str, Any]) -> str:
-        """
-        Formatea el mensaje destacando los cambios desde la última verificación
-        
-        Args:
-            result: Resultados del scraping con información de cambios
-        
-        Returns:
-            str: Mensaje formateado en HTML destacando cambios
-        """
-        changes_by_color = result.get('changes_by_color', {})
-        product = _display_product_name(result.get('product', 'iPhone 17 Pro Max'))
-        timestamp = result.get('timestamp', '')
-        summary = result.get('summary', '')
-        cache_age = result.get('cache_age', 'N/A')
-        
-        any_new_available = any(
-            cap.get('new_available')
-            for color_data in changes_by_color.values()
-            for cap in color_data.values()
-        )
-        any_new_unavailable = any(
-            cap.get('new_unavailable')
-            for color_data in changes_by_color.values()
-            for cap in color_data.values()
-        )
-        
-        # Encabezado según tipo de cambio
-        if any_new_available:
-            header = "🎉 <b>¡NUEVO STOCK DISPONIBLE!</b>"
-        elif any_new_unavailable:
-            header = "⚠️ <b>ALERTA: Stock Agotado</b>"
-        else:
-            header = "📊 <b>Actualización de Stock</b>"
-        
-        message_parts = [
-            header,
-            f"📱 <b>{product}</b>",
-            "",
-            f"🕐 {timestamp[:19]}",
-            f"📦 Última verificación: hace {cache_age}",
-            "",
-            f"<i>{summary}</i>",
-            ""
-        ]
-        
-        for color, color_changes in changes_by_color.items():
-            color_has_changes = any(
-                changes.get('new_available') or changes.get('new_unavailable') or changes.get('still_available')
-                for changes in color_changes.values()
-            )
-            if not color_has_changes:
-                continue
-            
-            message_parts.append("🎨 <b>" + color.upper() + "</b>")
-            message_parts.append("")
-            
-            for capacity, changes in color_changes.items():
-                new_available = changes.get('new_available', [])
-                new_unavailable = changes.get('new_unavailable', [])
-                still_available = changes.get('still_available', [])
-                
-                if not (new_available or new_unavailable or still_available):
-                    continue
-                
-                message_parts.append("━━━━━━━━━━━━━━━━━")
-                message_parts.append(f"<b>📦 {capacity.upper()}</b>")
-                message_parts.append("")
-                
-                # 🎉 NUEVO STOCK (lo más importante)
-                if new_available:
-                    message_parts.append(f"<b>✨ NUEVO STOCK ({len(new_available)}):</b>")
-                    message_parts.append("")
-                    for store in new_available:
-                        name = store.get('name', 'Unknown')
-                        city = store.get('city', '')
-                        state = store.get('state', '')
-                        quote = store.get('pickup_quote', 'Available')
-                        message_parts.append(f"🎉 <b>{name}</b>")
-                        message_parts.append(f"   📍 {city}, {state}")
-                        message_parts.append(f"   ⏰ {quote}")
-                        message_parts.append("")
-                
-                # ⚠️ STOCK AGOTADO
-                if new_unavailable:
-                    message_parts.append(f"<b>📉 STOCK AGOTADO ({len(new_unavailable)}):</b>")
-                    message_parts.append("")
-                    for store in new_unavailable:
-                        name = store.get('name', 'Unknown')
-                        city = store.get('city', '')
-                        state = store.get('state', '')
-                        message_parts.append(f"❌ {name} ({city}, {state})")
-                    message_parts.append("")
-                
-                # ✅ RESUMEN - Tiendas que aún tienen stock
-                if still_available:
-                    message_parts.append(f"<b>✅ AÚN CON STOCK ({len(still_available)}):</b>")
-                    message_parts.append("")
-                    for store in still_available[:5]:  # Máximo 5
-                        name = store.get('name', 'Unknown')
-                        city = store.get('city', '')
-                        state = store.get('state', '')
-                        message_parts.append(f"✅ {name} ({city}, {state})")
-                    if len(still_available) > 5:
-                        message_parts.append(f"... y {len(still_available) - 5} más")
-                    message_parts.append("")
-        
-        message_parts.append("━━━━━━━━━━━━━━━━━")
-        message_parts.append("🤖 <i>Apple Stock Bot</i>")
-        
-        return "\n".join(message_parts)
+        return "\n".join(message_parts).rstrip()
     
     def _format_error_message(self, result: Dict[str, Any]) -> str:
         """
@@ -325,16 +139,7 @@ class TelegramBot:
         error = result.get('error', 'Error desconocido')
         timestamp = result.get('timestamp', '')
         
-        return f"""❌ <b>ERROR EN SCRAPING</b>
-
-🕐 {timestamp[:19]}
-
-<b>Error:</b>
-<code>{error}</code>
-
-━━━━━━━━━━━━━━━━━
-🤖 <i>Apple Stock Bot</i>
-"""
+        return f"❌ <b>ERROR EN SCRAPING</b>\n🕐 {timestamp[:19]}\n\n<code>{error}</code>"
     
     def test_connection(self) -> bool:
         """
@@ -345,12 +150,7 @@ class TelegramBot:
         """
         logger.info("🧪 Probando conexión con Telegram...")
         
-        test_message = """🧪 <b>Test de Conexión</b>
-
-✅ El bot de Telegram está funcionando correctamente.
-
-━━━━━━━━━━━━━━━━━
-🤖 <i>Apple Stock Bot</i>
-"""
+        test_message = "🧪 <b>Test de Conexión</b>\n✅ El bot de Telegram está funcionando correctamente."
         
         return self.send_message(test_message)
+

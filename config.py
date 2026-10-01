@@ -22,6 +22,8 @@ class Config:
     # === Target Configuration ===
     # Capacidades a verificar. La primera debe coincidir con la que trae la URL hardcodeada en apple_scraper.py
     TARGET_CAPACITIES: list = [c.strip() for c in os.getenv('TARGET_CAPACITIES', '256gb,512gb').split(',') if c.strip()]
+    # Colores a verificar. El primero debe coincidir con el que trae la URL hardcodeada en apple_scraper.py
+    TARGET_COLORS: list = [c.strip() for c in os.getenv('TARGET_COLORS', 'burgundy,glacier,silver,black').split(',') if c.strip()]
     
     # === Telegram Configuration ===
     TELEGRAM_BOT_TOKEN: str = os.getenv('TELEGRAM_BOT_TOKEN', '')
@@ -38,6 +40,8 @@ class Config:
         """
         if not Config.TARGET_CAPACITIES:
             raise ValueError("❌ TARGET_CAPACITIES no configurado")
+        if not Config.TARGET_COLORS:
+            raise ValueError("❌ TARGET_COLORS no configurado")
     
     @staticmethod
     def display_config() -> str:
@@ -54,6 +58,7 @@ class Config:
 
 🎯 Target:
    Capacidades: {', '.join(Config.TARGET_CAPACITIES)}
+   Colores: {', '.join(Config.TARGET_COLORS)}
 
 📱 Telegram:
    Bot Token: {'Configurado' if Config.TELEGRAM_BOT_TOKEN else 'No configurado'}

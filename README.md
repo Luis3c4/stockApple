@@ -1,236 +1,20 @@
 # 🍎 Apple Store Scraper
 
-Bot automatizado para monitorear disponibilidad de productos Apple en tiendas específicas con notificaciones Telegram.
+Bot automatizado para monitorear disponibilidad de productos Apple (color x capacidad) en tiendas específicas, con notificaciones Telegram.
 
 ![Python](https://img.shields.io/badge/python-3.14+-blue.svg)
 ![Playwright](https://img.shields.io/badge/playwright-1.57+-green.svg)
 
 ## 📋 Características
 
-- 🤖 **Scraping inteligente** - Navegación con Playwright interceptando API real
-- 🔁 **Sistema de caché** - Compara con la última verificación
+- 🤖 **Scraping inteligente** - Navegación con Playwright interceptando la API real de Apple (`fulfillment-messages`)
+- 🎨 **Matriz color x capacidad** - Verifica todas las combinaciones configuradas
+- 🔁 **Sistema de caché** - Compara con la última verificación y detecta cambios
 - 📱 **Telegram** - Notificación en cada ejecución (con o sin cambios)
 - 📊 **Logs detallados** - Tracking completo con rotación diaria
-- 🔧 **Timeout inteligente** - 5 minutos máximo por ejecución
+- 🧪 **Comandos de testing** incluidos (`--test`, `--test-telegram`, `--show-config`)
 
 ---
-
-## 🚀 Instalación Rápida
-
-### 1️⃣ Instalar dependencias
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-playwright install
-```
-
-### 2️⃣ Configurar Telegram
-Edita `.env`:
-```env
-PLAYWRIGHT_HEADLESS=true
-PLAYWRIGHT_DEBUG=false
-TELEGRAM_BOT_TOKEN=tu_token_aqui
-TELEGRAM_CHAT_ID=tu_chat_id_aqui
-```
-
-### 3️⃣ Probar manualmente
-```powershell
-python main.py
-```
-
----
-
-## 🔄 Sistema de Caché
-
-**Flujo inteligente:**
-1. 🌐 Scraping con Playwright
-2. 📡 Intercepta API de Apple (fulfillment-messages)
-3. 🔍 Compara con caché anterior
-4. 🔔 **Siempre notifica** (mensaje detallado si hay cambios, mensaje corto "aún sin stock" si no los hay)
-5. 💾 Actualiza caché
-
-**Detecta:**
-- ✨ Nuevas tiendas con stock
-- 📉 Tiendas que agotaron stock
-- ✅ Sin cambios (notifica con mensaje corto)
-
-**Ubicación:** `cache/availability_cache.json`
-
----
-
-## ⚙️ Configuración (.env)
-
-```env
-# Playwright
-PLAYWRIGHT_HEADLESS=true
-PLAYWRIGHT_DEBUG=false
-SAVE_SCREENSHOTS=false
-
-# Telegram
-TELEGRAM_BOT_TOKEN=tu_token
-TELEGRAM_CHAT_ID=tu_chat_id
-```
-
----
-
-## 🛠️ Comandos Útiles
-
-### Desarrollo
-```powershell
-# Ver navegador (debugging)
-python main.py --headless=false
-
-# Probar conexión Apple Store
-python main.py --test
-
-# Ver configuración actual
-python main.py --show-config
-```
-
----
-
-## 📁 Estructura del Proyecto
-
-```
-apple-store-scraper/
-├── main.py                      # Punto de entrada
-├── config.py                    # Configuración
-├── requirements.txt             # Dependencias
-├── .env                         # Variables de entorno
-│
-├── services/                    
-│   ├── apple_scraper.py        # Scraper principal
-│   └── telegram_bot.py         # Notificaciones
-│
-├── utils/                       
-│   ├── logger.py               # Sistema de logs
-│   └── cache_manager.py        # Gestor de caché
-│
-├── cache/                       
-│   └── availability_cache.json
-│
-├── logs/                        
-│   └── apple_bot_YYYYMMDD.log
-│
-└── screenshots/                 
-```
-
----
-
-## 🔧 Troubleshooting
-
-### No recibo notificaciones Telegram
-- Confirma token y chat_id correctos
-- Prueba manualmente: `python main.py`
-
-### Selectores CSS desactualizados
-- Apple cambia su sitio frecuentemente
-- Ejecuta con `--headless=false` para ver qué busca
-- Actualiza selectores en `services/apple_scraper.py`
-
----
-
-## 📚 Recursos
-
-- **Telegram Bot**: [@BotFather](https://t.me/botfather)
-- **Playwright Docs**: [playwright.dev](https://playwright.dev)
-
----
-
-## 🐛 Troubleshooting
-
-### Error: Playwright no instalado
-
-```bash
-playwright install chromium
-```
-
-### El scraper no encuentra productos
-
-1. **Ejecuta en modo visible:**
-   ```bash
-   python main.py --headless=false
-   ```
-
-2. **Revisa los screenshots:**
-   - Chequea `screenshots/` para ver qué está capturando
-
-3. **Actualiza los selectores:**
-   - Los selectores CSS en `apple_scraper.py` necesitan actualizarse
-   - Apple cambia su estructura frecuentemente
-
-### Playwright falla en Windows
-
-Si hay problemas, usa WSL:
-
-```bash
-# En WSL Ubuntu
-sudo apt update
-sudo apt install python3-pip
-pip3 install -r requirements.txt
-playwright install-deps
-playwright install chromium
-```
-
-### Logs y debugging
-
-- **Logs:** `logs/apple_bot_YYYYMMDD.log`
-- **Screenshots:** `screenshots/`
-- **Modo debug:** `PLAYWRIGHT_HEADLESS=false`
-
-## 💡 Tips
-
-### Para desarrollo
-
-```bash
-# Ver navegador + guardar screenshots
-python main.py --headless=false --save-json
-```
-
-### Para producción
-
-```env
-# En .env
-PLAYWRIGHT_HEADLESS=true
-SCREENSHOT_ON_ERROR=true
-SAVE_SCREENSHOTS=false
-```
-
-## 📝 Notas Importantes
-
-### ⚠️ Selectores CSS
-
-**Los selectores cambian frecuentemente.** Este scraper incluye selectores genéricos que debes actualizar según la estructura actual de Apple Store.
-
-### 🤖 Anti-detección
-
-El scraper incluye:
-- User-agent realista
-- Viewport y locale configurados
-- Delays entre acciones
-- Flags anti-detección de Playwright
-
-### 📊 Rate limiting
-
-Sé respetuoso con Apple Store:
-- No ejecutes demasiadas veces en corto tiempo
-- Apple puede bloquear IPs con tráfico excesivo
-- Usa delays apropiados
-
-## 📄 Licencia
-
-MIT License - Ver archivo `LICENSE`
-
-## 📋 Características
-
-- 🤖 **Scraping automático** con Playwright (navegación completa con JavaScript)
-- 📱 **Notificaciones a Telegram** con mensajes formateados
-- ⏰ **Verificación diaria programada** usando APScheduler
-- 📸 **Screenshots automáticos** en caso de error para debugging
-- 📊 **Sistema de logging** completo con rotación diaria
-- 🔧 **Configuración flexible** mediante variables de entorno
-- 🧪 **Comandos de testing** incluidos
 
 ## 🚀 Instalación
 
@@ -238,154 +22,123 @@ MIT License - Ver archivo `LICENSE`
 
 - Python 3.14 o superior
 - Cuenta de Telegram y bot creado
-- Conexión a internet
 
-### Paso 1: Clonar o descargar el proyecto
-
-```bash
-cd apple-stock-bot
-```
-
-### Paso 2: Crear entorno virtual (recomendado)
+### 1️⃣ Crear entorno virtual e instalar dependencias
 
 ```bash
-# Crear entorno virtual
-python -m venv venv
+python -m venv .venv
+source .venv/bin/activate   # En Windows: .venv\Scripts\activate
 
-# Activar entorno virtual
-# En Windows:
-venv\Scripts\activate
-
-# En Linux/macOS:
-source venv/bin/activate
-```
-
-### Paso 3: Instalar dependencias
-
-```bash
-# Instalar paquetes Python
 pip install -r requirements.txt
-
-# Instalar navegador Chromium para Playwright
 playwright install chromium
 ```
 
-### Paso 4: Configurar variables de entorno
+### 2️⃣ Configurar variables de entorno
 
-1. Copiar el archivo de ejemplo:
-```bash
-copy .env.example .env
-```
+Copia `.env.example` a `.env` y completa los valores:
 
-2. Editar `.env` con tus valores:
 ```env
-TELEGRAM_BOT_TOKEN=tu_token_real_aqui
-TELEGRAM_CHAT_ID=tu_chat_id_real_aqui
+PLAYWRIGHT_HEADLESS=true
+PLAYWRIGHT_DEBUG=false
+SAVE_SCREENSHOTS=false
+SCREENSHOT_ON_ERROR=true
+
+TARGET_CAPACITIES=256gb,512gb
+TARGET_COLORS=burgundy,glacier,silver,black
+
+TELEGRAM_BOT_TOKEN=tu_token_aqui
+TELEGRAM_CHAT_ID=tu_chat_id_aqui
 ```
 
-### Paso 5: Obtener credenciales de Telegram
+> ⚠️ La primera capacidad y el primer color deben coincidir con los que trae la URL hardcodeada en `services/apple_scraper.py` (`PRODUCT_URL`).
 
-#### Crear Bot de Telegram:
+#### Obtener credenciales de Telegram
 
-1. Abre Telegram y busca **@BotFather**
-2. Envía el comando `/newbot`
-3. Sigue las instrucciones para crear tu bot
-4. **Copia el token** que te da BotFather
-5. Pégalo en `.env` como `TELEGRAM_BOT_TOKEN`
+1. Busca **@BotFather** en Telegram, envía `/newbot` y sigue las instrucciones. Copia el token en `TELEGRAM_BOT_TOKEN`.
+2. Busca **@userinfobot**, inicia con `/start` y copia tu Chat ID en `TELEGRAM_CHAT_ID` (acepta varios IDs separados por coma).
 
-#### Obtener tu Chat ID:
-
-1. Busca **@userinfobot** en Telegram
-2. Inicia una conversación con `/start`
-3. El bot te mostrará tu **Chat ID**
-4. Cópialo y pégalo en `.env` como `TELEGRAM_CHAT_ID`
-
-## 📖 Uso
-
-### Ejecutar verificación
-
-Ejecuta una única verificación de disponibilidad:
+### 3️⃣ Probar manualmente
 
 ```bash
 python main.py
 ```
 
-Cada ejecución realiza una única verificación y termina (pensado para ser lanzado por un scheduler externo, ver systemd timer).
+Cada ejecución realiza una única verificación y termina (pensado para ser lanzado por un scheduler externo, ver systemd timer más abajo).
 
-### Probar conexión con Telegram
+---
 
-Envía un mensaje de prueba para verificar que la configuración es correcta:
-
-```bash
-python main.py --test-telegram
-```
-
-### Probar conexión con Apple Store y Telegram
+## 📖 Uso
 
 ```bash
-python main.py --test
+python main.py                      # Ejecutar verificación completa
+python main.py --headless=false     # Ver el navegador durante el scraping
+python main.py --test               # Probar conexión con Apple Store y Telegram
+python main.py --test-telegram      # Probar solo la conexión con Telegram
+python main.py --show-config        # Mostrar configuración actual (sin datos sensibles)
+python main.py --save-json          # Guardar resultados en archivo JSON
 ```
 
-### Mostrar configuración
+---
 
-Muestra la configuración actual sin datos sensibles:
+## 🔄 Sistema de Caché
 
-```bash
-python main.py --show-config
-```
+**Flujo:**
+1. 🌐 Scraping con Playwright
+2. 📡 Intercepta la API de Apple (`fulfillment-messages`) para cada color y capacidad
+3. 🔍 Compara con el caché anterior (`cache/availability_cache.json`)
+4. 🔔 **Siempre notifica** (mensaje detallado si hay cambios, mensaje corto "aún sin stock" si no los hay)
+5. 💾 Actualiza el caché
 
-## ⚙️ Configuración
+**Detecta:**
+- ✨ Nuevas tiendas con stock
+- 📉 Tiendas que agotaron stock
+- ✅ Sin cambios (notifica con mensaje corto)
 
-Todas las configuraciones se manejan en el archivo `.env`:
+---
 
-### Variables Principales
+## ⚙️ Configuración (.env)
 
 | Variable | Descripción | Valor por defecto |
 |----------|-------------|-------------------|
 | `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram | *(requerido)* |
 | `TELEGRAM_CHAT_ID` | ID del/los chat(s) donde enviar mensajes (separados por coma) | *(requerido)* |
 | `TARGET_CAPACITIES` | Capacidades a verificar (separadas por coma) | `256gb,512gb` |
+| `TARGET_COLORS` | Colores a verificar (separados por coma) | `burgundy,glacier,silver,black` |
 | `PLAYWRIGHT_HEADLESS` | Ejecutar navegador invisible | `true` |
+| `PLAYWRIGHT_DEBUG` | Pausar con el inspector de Playwright | `false` |
 | `SCREENSHOT_ON_ERROR` | Guardar capturas en errores | `true` |
+| `SAVE_SCREENSHOTS` | Guardar capturas en cada ejecución | `false` |
 
-### Ejemplo de configuración personalizada
-
-```env
-# Capacidades a verificar
-TARGET_CAPACITIES=256gb,512gb
-
-# Ver el navegador durante scraping (útil para debug)
-PLAYWRIGHT_HEADLESS=false
-```
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
-apple-stock-bot/
-├── main.py                      # 🎯 Punto de entrada principal
-├── config.py                    # ⚙️ Configuración y variables de entorno
-├── requirements.txt             # 📦 Dependencias Python
-├── .env                         # 🔐 Variables de entorno (crear desde .env.example)
-├── .env.example                 # 📋 Plantilla de configuración
-├── .gitignore                   # 🚫 Archivos a ignorar en Git
-├── README.md                    # 📖 Esta documentación
+stockApple/
+├── main.py                      # Punto de entrada principal
+├── config.py                    # Configuración y variables de entorno
+├── requirements.txt             # Dependencias Python
+├── .env                         # Variables de entorno (crear desde .env.example)
+├── .env.example                 # Plantilla de configuración
 │
-├── services/                    # 🔧 Servicios principales
-│   ├── __init__.py
-│   ├── apple_scraper.py        # 🕷️ Scraping con Playwright
-│   └── telegram_notifier.py    # 📱 Notificaciones Telegram
+├── services/
+│   ├── apple_scraper.py         # Scraping con Playwright
+│   └── telegram_bot.py          # Notificaciones a Telegram
 │
-├── utils/                       # 🛠️ Utilidades
-│   ├── __init__.py
-│   ├── logger.py               # 📊 Sistema de logging
-│   └── scheduler.py            # ⏰ Programación de tareas
+├── utils/
+│   ├── logger.py                 # Sistema de logging
+│   └── cache_manager.py          # Gestor de caché
 │
-├── logs/                        # 📝 Archivos de log (generados)
+├── cache/
+│   └── availability_cache.json
+│
+├── logs/
 │   └── apple_bot_YYYYMMDD.log
 │
-└── screenshots/                 # 📸 Capturas de pantalla (generadas)
-    └── error_*.png
+└── screenshots/                  # Capturas y dumps de debug por color/capacidad
 ```
+
+---
 
 ## 🐛 Troubleshooting
 
@@ -395,38 +148,24 @@ apple-stock-bot/
 playwright install chromium
 ```
 
-### Error: Token de Telegram inválido
+### No recibo notificaciones Telegram
 
-- Verifica que el token en `.env` sea correcto
-- Asegúrate de que no haya espacios al inicio/final
-- Verifica que usaste el token completo de @BotFather
-
-### Error: No se reciben mensajes en Telegram
-
-- Verifica que `TELEGRAM_CHAT_ID` sea correcto
+- Verifica que `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` sean correctos (sin espacios al inicio/final)
 - Inicia una conversación con tu bot (envíale `/start`)
 - Ejecuta `python main.py --test-telegram` para probar
 
-### El scraping no encuentra productos
+### El scraper no encuentra productos / selectores desactualizados
 
-⚠️ **Los selectores CSS de Apple Store cambian frecuentemente**
+⚠️ **Los selectores CSS de Apple Store cambian con frecuencia.**
 
-1. Ejecuta con `PLAYWRIGHT_HEADLESS=false` en `.env`:
-   ```env
-   PLAYWRIGHT_HEADLESS=false
-   ```
-
-2. Observa qué elementos busca el navegador
-
-3. Revisa los screenshots en `screenshots/` para ver la página real
-
-4. Actualiza los selectores CSS en [services/apple_scraper.py](services/apple_scraper.py) en el método `_extract_availability_data()`
-
-5. Busca comentarios con `TODO` en el código que indican áreas que necesitan actualización
+1. Ejecuta en modo visible: `python main.py --headless=false`
+2. Observa qué elementos busca el navegador (herramientas de desarrollador, F12)
+3. Revisa los screenshots/dumps en `screenshots/` para ver la respuesta real de la API
+4. Actualiza los selectores en [services/apple_scraper.py](services/apple_scraper.py), método `_extract_availability_data()`
 
 ### Playwright falla en Windows
 
-Si tienes problemas, considera usar WSL (Windows Subsystem for Linux):
+Si hay problemas, usa WSL (Windows Subsystem for Linux):
 
 ```bash
 # En WSL Ubuntu
@@ -437,84 +176,10 @@ playwright install-deps
 playwright install chromium
 ```
 
-### Logs y debugging
-
-- Los logs se guardan en `logs/apple_bot_YYYYMMDD.log`
-- Los screenshots de error se guardan en `screenshots/`
-- Usa `PLAYWRIGHT_HEADLESS=false` para ver el navegador en acción
-
-## 🔧 Personalización Avanzada
-
-### Cambiar selectores CSS
-
-Los selectores CSS de Apple Store deben actualizarse según la estructura actual de la página. Edita [services/apple_scraper.py](services/apple_scraper.py):
-
-```python
-def _extract_availability_data(self, page: Page):
-    # Actualiza estos selectores según la estructura real
-    store_items = page.query_selector_all(
-        '.tu-selector-aqui'  # <- Actualiza esto
-    )
-    # ... resto del código
-```
-
-### Añadir múltiples horarios de verificación
-
-Edita [utils/scheduler.py](utils/scheduler.py) para añadir más jobs:
-
-```python
-# Verificación matutina
-self.scheduler.add_job(
-    self.run_check,
-    trigger=CronTrigger(hour=9, minute=0),
-    id='morning_check'
-)
-
-# Verificación vespertina
-self.scheduler.add_job(
-    self.run_check,
-    trigger=CronTrigger(hour=18, minute=0),
-    id='evening_check'
-)
-```
-
-### Añadir más productos o estados
-
-Modifica `.env` o adapta el código para buscar múltiples productos.
-
-## 📝 Notas Importantes
-
-### ⚠️ Actualización de Selectores
-
-**Los selectores CSS de Apple Store cambian con frecuencia.** Este bot incluye selectores genéricos que probablemente necesitarás actualizar.
-
-**Proceso recomendado:**
-
-1. Ejecuta el bot con `PLAYWRIGHT_HEADLESS=false`
-2. Observa la página que se abre
-3. Usa las herramientas de desarrollador del navegador (F12)
-4. Inspecciona los elementos de las tiendas
-5. Actualiza los selectores en `apple_scraper.py`
-
-### 🤖 Comportamiento similar a humano
-
-El scraper incluye:
-- User-agent realista
-- Delays entre acciones
-- Configuración de viewport y locale
-- Flags anti-detección
-
-### 📊 Rate limiting
-
-Sé considerado con Apple Store:
-- No ejecutes verificaciones muy frecuentes
-- El bot está diseñado para 1 verificación diaria
-- Apple puede bloquear IPs con tráfico excesivo
-
-## Configuración de Playwright en Ubuntu 26.04
+### Configuración de Playwright en Ubuntu 26.04
 
 ```bash
-# Actualizar playwright a última versión (necesario para que reconozca Ubuntu 26.04)
+# Actualizar playwright a la última versión (necesario para que reconozca Ubuntu 26.04)
 pip install --upgrade playwright
 
 # Instalar Chromium y dependencias del sistema
@@ -522,7 +187,15 @@ playwright install chromium
 playwright install-deps
 ```
 
-## Automatización con systemd timer
+### Logs y debugging
+
+- **Logs:** `logs/apple_bot_YYYYMMDD.log`
+- **Screenshots/dumps:** `screenshots/`
+- **Modo debug:** `PLAYWRIGHT_HEADLESS=false`
+
+---
+
+## ⏰ Automatización con systemd timer
 
 ```bash
 # Crear el servicio
@@ -561,6 +234,32 @@ Persistent=true
 WantedBy=timers.target
 ```
 
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now stockapple.timer
+```
+
+---
+
+## 📝 Notas Importantes
+
+### 🤖 Anti-detección
+
+El scraper incluye:
+- User-agent realista
+- Viewport y locale configurados
+- Delays entre acciones
+- Flags anti-detección de Playwright
+
+### 📊 Rate limiting
+
+Sé respetuoso con Apple Store:
+- No ejecutes verificaciones demasiado frecuentes
+- Apple puede bloquear IPs con tráfico excesivo
+- Usa los horarios del systemd timer como referencia
+
+---
+
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detalles.
@@ -568,4 +267,3 @@ Este proyecto está bajo la Licencia MIT. Ver archivo `LICENSE` para más detall
 ## ⚠️ Disclaimer
 
 Este bot es para uso educacional y personal. No está afiliado con Apple Inc. Usa este software bajo tu propia responsabilidad. El scraping puede violar los términos de servicio de algunos sitios web. Asegúrate de cumplir con todas las leyes y términos aplicables.
----

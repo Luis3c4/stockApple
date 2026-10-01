@@ -110,62 +110,69 @@ def display_results(result: dict) -> None:
     
     logger.info("")
     
-    capacities = result.get('capacities', {})
-    changes_by_capacity = result.get('changes_by_capacity', {})
+    colors = result.get('colors', {})
+    changes_by_color = result.get('changes_by_color', {})
     
-    for capacity, capacity_data in capacities.items():
-        available = capacity_data.get('available_stores', [])
-        unavailable = capacity_data.get('unavailable_stores', [])
+    for color, color_data in colors.items():
+        logger.info("=" * 70)
+        logger.info(f"🎨 COLOR: {color.upper()}")
+        logger.info("=" * 70)
         
-        logger.info("─" * 70)
-        logger.info(f"📦 CAPACIDAD: {capacity.upper()}")
-        logger.info("─" * 70)
+        color_changes = changes_by_color.get(color, {})
         
-        # Si hay cambios para esta capacidad, mostrarlos primero
-        capacity_changes = changes_by_capacity.get(capacity, {})
-        if result.get('has_changes') and not result.get('is_first_run') and capacity_changes:
-            if capacity_changes.get('new_available'):
-                logger.info(f"✨ NUEVO STOCK ({len(capacity_changes['new_available'])} tienda(s)):")
-                for i, store in enumerate(capacity_changes['new_available'], 1):
-                    logger.info(f"   {i}. 🎉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
-                    logger.info(f"      {store.get('pickup_quote', '')}")
+        for capacity, capacity_data in color_data.items():
+            available = capacity_data.get('available_stores', [])
+            unavailable = capacity_data.get('unavailable_stores', [])
+            
+            logger.info("─" * 70)
+            logger.info(f"📦 CAPACIDAD: {capacity.upper()}")
+            logger.info("─" * 70)
+            
+            # Si hay cambios para esta capacidad, mostrarlos primero
+            capacity_changes = color_changes.get(capacity, {})
+            if result.get('has_changes') and not result.get('is_first_run') and capacity_changes:
+                if capacity_changes.get('new_available'):
+                    logger.info(f"✨ NUEVO STOCK ({len(capacity_changes['new_available'])} tienda(s)):")
+                    for i, store in enumerate(capacity_changes['new_available'], 1):
+                        logger.info(f"   {i}. 🎉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+                        logger.info(f"      {store.get('pickup_quote', '')}")
+                    logger.info("")
+                
+                if capacity_changes.get('new_unavailable'):
+                    logger.info(f"⚠️ STOCK AGOTADO ({len(capacity_changes['new_unavailable'])} tienda(s)):")
+                    for i, store in enumerate(capacity_changes['new_unavailable'], 1):
+                        logger.info(f"   {i}. 📉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+                    logger.info("")
+            
+            # Resumen de todas las tiendas para esta capacidad
+            if available:
+                logger.info(f"✅ DISPONIBLE en {len(available)} tienda(s) (total):")
+                for i, store in enumerate(available, 1):
+                    name = store.get('name', 'Unknown')
+                    city = store.get('city', '')
+                    state = store.get('state', '')
+                    logger.info(f"   {i}. {name} - {city}, {state}")
                 logger.info("")
             
-            if capacity_changes.get('new_unavailable'):
-                logger.info(f"⚠️ STOCK AGOTADO ({len(capacity_changes['new_unavailable'])} tienda(s)):")
-                for i, store in enumerate(capacity_changes['new_unavailable'], 1):
-                    logger.info(f"   {i}. 📉 {store.get('name', 'Unknown')} - {store.get('city', '')}, {store.get('state', '')}")
+            if unavailable:
+                logger.info(f"❌ No disponible en {len(unavailable)} tienda(s):")
+                for store in unavailable[:5]:  # Mostrar máximo 5
+                    name = store.get('name', 'Unknown')
+                    city = store.get('city', '')
+                    state = store.get('state', '')
+                    logger.info(f"   • {name} - {city}, {state}")
+                if len(unavailable) > 5:
+                    logger.info(f"   ... y {len(unavailable) - 5} más")
                 logger.info("")
-        
-        # Resumen de todas las tiendas para esta capacidad
-        if available:
-            logger.info(f"✅ DISPONIBLE en {len(available)} tienda(s) (total):")
-            for i, store in enumerate(available, 1):
-                name = store.get('name', 'Unknown')
-                city = store.get('city', '')
-                state = store.get('state', '')
-                logger.info(f"   {i}. {name} - {city}, {state}")
+            
+            if not available and not unavailable:
+                logger.warning(f"⚠️ [{color}/{capacity}] No se encontraron datos de disponibilidad")
+            
+            total = len(available) + len(unavailable)
+            logger.info(f"📊 [{color}/{capacity}] Total: {len(available)} disponible(s) de {total} tienda(s) verificadas")
             logger.info("")
-        
-        if unavailable:
-            logger.info(f"❌ No disponible en {len(unavailable)} tienda(s):")
-            for store in unavailable[:5]:  # Mostrar máximo 5
-                name = store.get('name', 'Unknown')
-                city = store.get('city', '')
-                state = store.get('state', '')
-                logger.info(f"   • {name} - {city}, {state}")
-            if len(unavailable) > 5:
-                logger.info(f"   ... y {len(unavailable) - 5} más")
-            logger.info("")
-        
-        if not available and not unavailable:
-            logger.warning(f"⚠️ [{capacity}] No se encontraron datos de disponibilidad")
-        
-        total = len(available) + len(unavailable)
-        logger.info(f"📊 [{capacity}] Total: {len(available)} disponible(s) de {total} tienda(s) verificadas")
-        logger.info("")
     
-    if not capacities:
+    if not colors:
         logger.warning("⚠️ No se encontraron datos de disponibilidad")
         logger.info("💡 Ejecuta con --headless=false para ver qué está pasando")
         logger.info("💡 Revisa screenshots/ para capturas de pantalla")

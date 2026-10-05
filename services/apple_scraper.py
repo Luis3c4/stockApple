@@ -17,6 +17,12 @@ logger = logging.getLogger('AppleStockBot')
 PRODUCT_NAME = "iPhone 18 Pro Max"
 PRODUCT_URL = "https://www.apple.com/shop/buy-iphone/iphone-18-pro/6.9-inch-display-256gb-burgundy-unlocked"
 
+# El botón "Check availability" (PASO 2) suele tardar en aparecer o falla con un
+# timeout de forma intermitente en el sitio real de Apple; reintentar el scraping
+# completo (relanzando el navegador) resuelve la mayoría de los casos.
+MAX_SCRAPE_ATTEMPTS = 9
+RETRY_DELAY_MS = 60000
+
 
 class AppleScraper:
     """
@@ -32,7 +38,8 @@ class AppleScraper:
     
     def check_availability(self) -> Dict[str, Any]:
         """
-        Verifica disponibilidad de productos en Apple Store
+        Verifica disponibilidad de productos en Apple Store, reintentando el
+        scraping completo (relanzando el navegador) si falla por timeout.
         
         Returns:
             dict: {
@@ -44,6 +51,27 @@ class AppleScraper:
                 'error': str (opcional)
             }
         """
+        result: Dict[str, Any] = self._error_result("No se intentó el scraping")
+        
+        for attempt in range(1, MAX_SCRAPE_ATTEMPTS + 1):
+            if attempt > 1:
+                logger.warning(f"🔁 Reintentando scraping (intento {attempt}/{MAX_SCRAPE_ATTEMPTS})...")
+            
+            result = self._check_availability_attempt()
+            
+            if result['success']:
+                return result
+            
+            logger.error(f"❌ Intento {attempt}/{MAX_SCRAPE_ATTEMPTS} falló: {result.get('error')}")
+            if attempt < MAX_SCRAPE_ATTEMPTS:
+                import time
+                time.sleep(RETRY_DELAY_MS / 1000)
+        
+        logger.error(f"❌ Scraping falló tras {MAX_SCRAPE_ATTEMPTS} intentos")
+        return result
+    
+    def _check_availability_attempt(self) -> Dict[str, Any]:
+        """Realiza un único intento completo de scraping (lanza navegador, navega y extrae datos)"""
         logger.info(f"🔍 Iniciando scraping de: {PRODUCT_NAME}")
         logger.info(f"🌐 URL objetivo: {PRODUCT_URL}")
         

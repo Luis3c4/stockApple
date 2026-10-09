@@ -102,7 +102,7 @@ class AppleScraper:
                 response = page.goto(
                     PRODUCT_URL, 
                     wait_until='networkidle',
-                    timeout=30000
+                    timeout=45000
                 )
                 
                 if not response or not response.ok:
@@ -111,8 +111,8 @@ class AppleScraper:
                 logger.info(f"✓ Página cargada - Status: {response.status}")
                 logger.info("✓ Configuración preseleccionada: 6.9\", 256GB, Burgundy, Unlocked")
                 
-                # Esperar a que cargue contenido dinámico
-                page.wait_for_timeout(3000)
+                # Esperar a que cargue contenido dinámico (más margen para hardware lento)
+                page.wait_for_timeout(5000)
                 
                 # Screenshot inicial para debug
                 if not self.config.PLAYWRIGHT_HEADLESS:
@@ -172,9 +172,9 @@ class AppleScraper:
         capacity_radio = f'input[name="pl_dimensionCapacity"][value="{capacity}"]'
         
         try:
-            page.wait_for_selector(capacity_radio, timeout=10000)
+            page.wait_for_selector(capacity_radio, timeout=20000)
             
-            with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=15000) as resp_info:
+            with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=25000) as resp_info:
                 page.check(capacity_radio, force=True)
                 logger.info(f"✓ Capacidad {capacity} seleccionada")
             
@@ -217,16 +217,17 @@ class AppleScraper:
             
             # PASO 1: Seleccionar no Apple Care
             logger.info("🛡️ PASO 1: Seleccionando no Apple Care...")
-            page.wait_for_selector('input[data-autom="noapplecare"]', timeout=10000)
+            page.wait_for_selector('input[data-autom="noapplecare"]', timeout=20000)
             page.click('input[data-autom="noapplecare"]', force=True)
             logger.info("✓ No Apple Care seleccionado")
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(1500)
             
             # PASO 2: Click en botón "Check availability"
             # Selector dinámico: el número de parte varía según la config/región que Apple asigne
+            # Timeout alto: en hardware lento el botón puede tardar en terminar de renderizarse
             logger.info("📍 PASO 2: Haciendo clic en 'Check availability'...")
             check_availability_btn = page.locator('button[data-autom^="productLocatorTriggerLink_"]').first
-            check_availability_btn.wait_for(state='visible', timeout=10000)
+            check_availability_btn.wait_for(state='visible', timeout=30000)
             check_availability_btn.click()
             logger.info("✓ Modal de disponibilidad abierto")
             page.wait_for_timeout(2000)
@@ -239,7 +240,7 @@ class AppleScraper:
             # PASO 3: Ingresar "Miami" en el input
             logger.info("🔢 PASO 3: Ingresando 'Miami' en el buscador...")
             search_input = 'input[data-autom="zipCode"]'
-            page.wait_for_selector(search_input, timeout=10000)
+            page.wait_for_selector(search_input, timeout=20000)
             page.fill(search_input, '33133')
             logger.info("✓ 'Miami' ingresado")
             
@@ -247,13 +248,13 @@ class AppleScraper:
             # del primer color+capacidad (los que ya vienen preseleccionados en la URL del producto)
             logger.info("⏳ PASO 4: Esperando opciones del autocomplete...")
             miami_option = 'li[role="option"][data-option-index="0"]'
-            page.wait_for_selector(miami_option, timeout=10000)
-            page.wait_for_timeout(1000)  # Esperar a que se complete el fetch
+            page.wait_for_selector(miami_option, timeout=20000)
+            page.wait_for_timeout(1500)  # Esperar a que se complete el fetch
             
             first_color = colors[0]
             first_capacity = capacities[0]
             logger.info(f"⏳ PASO 5: Esperando respuesta de la API de disponibilidad ({first_color}_{first_capacity})...")
-            with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=15000) as resp_info:
+            with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=25000) as resp_info:
                 page.click(miami_option)
                 logger.info("✓ 'Miami, FL' seleccionado")
             
@@ -287,9 +288,9 @@ class AppleScraper:
                 color_label = f'li:has({color_radio}) label'
                 
                 try:
-                    page.wait_for_selector(color_radio, timeout=10000)
+                    page.wait_for_selector(color_radio, timeout=20000)
                     
-                    with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=15000) as resp_info:
+                    with page.expect_response(lambda r: 'fulfillment-messages' in r.url, timeout=25000) as resp_info:
                         page.click(color_label)
                         logger.info(f"✓ Color {color} seleccionado")
                     

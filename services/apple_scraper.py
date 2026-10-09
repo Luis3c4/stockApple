@@ -80,20 +80,24 @@ class AppleScraper:
             page: Optional[Page] = None
             
             try:
-                # Lanzar navegador Chromium
-                logger.info(f"🚀 Lanzando navegador (headless={self.config.PLAYWRIGHT_HEADLESS})")
-                browser = p.chromium.launch(
-                    headless=self.config.PLAYWRIGHT_HEADLESS,
-                    args=['--disable-blink-features=AutomationControlled']  # Evitar detección de bot
-                )
+                # Lanzar navegador Firefox: Chromium (vía CDP) es detectado por Apple como
+                # bot incluso con flags anti-detección y bajo xvfb-run; Firefox no usa CDP
+                # y sí renderiza el flujo completo (confirmado manualmente: botón visible)
+                logger.info(f"🚀 Lanzando navegador Firefox (headless={self.config.PLAYWRIGHT_HEADLESS})")
+                browser = p.firefox.launch(headless=self.config.PLAYWRIGHT_HEADLESS)
                 
                 # Crear contexto con configuración realista
                 context = browser.new_context(
-                    user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:132.0) Gecko/20100101 Firefox/132.0',
                     viewport={'width': 1920, 'height': 1080},
                     locale='en-US',
                     timezone_id='America/New_York'
                 )
+                
+                # Ocultar navigator.webdriver, que Playwright activa por defecto
+                context.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                """)
                 
                 page = context.new_page()
                 

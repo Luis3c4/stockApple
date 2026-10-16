@@ -226,13 +226,15 @@ class AppleScraper:
             logger.info("✓ No Apple Care seleccionado")
             page.wait_for_timeout(1500)
             
-            # PASO 2: Click en botón "Check availability"
-            # Selector dinámico: el número de parte varía según la config/región que Apple asigne
-            # Timeout alto: en hardware lento el botón puede tardar en terminar de renderizarse
-            logger.info("📍 PASO 2: Haciendo clic en 'Check availability'...")
+            # PASO 2: Activar la recogida en tienda
+            logger.info("📍 PASO 2: Abriendo la disponibilidad para recogida...")
             check_availability_btn = page.locator('button[data-autom^="productLocatorTriggerLink_"]').first
-            check_availability_btn.wait_for(state='visible', timeout=30000)
-            check_availability_btn.click()
+            if check_availability_btn.count() and check_availability_btn.is_visible():
+                check_availability_btn.click()
+            else:
+                pickup_option = page.get_by_text('Pick up from Store', exact=True).last
+                pickup_option.wait_for(state='visible', timeout=15000)
+                pickup_option.click()
             logger.info("✓ Modal de disponibilidad abierto")
             page.wait_for_timeout(2000)
             

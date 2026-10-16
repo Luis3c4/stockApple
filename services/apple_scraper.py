@@ -234,7 +234,7 @@ class AppleScraper:
             else:
                 pickup_option = page.get_by_text('Pick up from Store', exact=True).last
                 pickup_option.wait_for(state='visible', timeout=15000)
-                pickup_option.click()
+                pickup_option.evaluate('(element) => element.click()')
             logger.info("✓ Modal de disponibilidad abierto")
             page.wait_for_timeout(2000)
             

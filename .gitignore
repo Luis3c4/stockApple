@@ -60,3 +60,4 @@ $RECYCLE.BIN/
 dist/
 build/
 *.egg-info/
+*.html

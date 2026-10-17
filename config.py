@@ -18,6 +18,7 @@ class Config:
     PLAYWRIGHT_DEBUG: bool = os.getenv('PLAYWRIGHT_DEBUG', 'false').lower() == 'true'  # Pausar con inspector
     SCREENSHOT_ON_ERROR: bool = os.getenv('SCREENSHOT_ON_ERROR', 'true').lower() == 'true'
     SAVE_SCREENSHOTS: bool = os.getenv('SAVE_SCREENSHOTS', 'true').lower() == 'true'
+    CHROME_CDP_URL: str = os.getenv('CHROME_CDP_URL', 'http://127.0.0.1:9222')
     
     # === Target Configuration ===
     # Capacidades a verificar. La primera debe coincidir con la que trae la URL hardcodeada en apple_scraper.py

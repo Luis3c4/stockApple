@@ -80,25 +80,19 @@ class AppleScraper:
             page: Optional[Page] = None
             
             try:
-                logger.info(f"🚀 Lanzando Google Chrome (headless={self.config.PLAYWRIGHT_HEADLESS})")
-                browser = p.chromium.launch(
-                    channel='chrome',
-                    headless=self.config.PLAYWRIGHT_HEADLESS
+                logger.info(f"🔌 Conectando a Chrome por CDP: {self.config.CHROME_CDP_URL}")
+                browser = p.chromium.connect_over_cdp(self.config.CHROME_CDP_URL)
+                if not browser.contexts:
+                    raise RuntimeError("Chrome remoto no tiene un contexto de navegador disponible")
+
+                context = browser.contexts[0]
+                page = next(
+                    (existing_page for existing_page in context.pages
+                     if existing_page.url.startswith('https://www.apple.com/')),
+                    None
                 )
-                
-                # Crear contexto con configuración realista
-                context = browser.new_context(
-                    viewport={'width': 1920, 'height': 1080},
-                    locale='en-US',
-                    timezone_id='America/New_York'
-                )
-                
-                # Ocultar navigator.webdriver, que Playwright activa por defecto
-                context.add_init_script("""
-                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                """)
-                
-                page = context.new_page()
+                if page is None:
+                    page = context.new_page()
                 
                 # Navegar directamente al iPhone 18 Pro configurado (6.9", 256GB, Burgundy, Unlocked)
                 logger.info("🌐 Navegando a configuración de iPhone 18 Pro...")
@@ -124,10 +118,6 @@ class AppleScraper:
                 
                 # Extraer datos de disponibilidad (por cada color y capacidad configurados)
                 colors_result = self._extract_availability_data(page)
-                
-                # Cerrar navegador
-                context.close()
-                browser.close()
                 
                 total_available = sum(
                     len(capacity_data['available_stores'])
@@ -160,14 +150,7 @@ class AppleScraper:
                     self._save_error_screenshot(page, 'error')
                 return self._error_result(str(e))
                 
-            finally:
-                # Asegurar limpieza de recursos
-                if browser:
-                    try:
-                        browser.close()
-                    except:
-                        pass
-    
+
     def _select_capacity_and_capture(self, page: Page, color: str, capacity: str) -> Dict[str, Any]:
         """Selecciona una capacidad en el modal (radio) y captura/procesa su respuesta de fulfillment"""
         label = f"{color}_{capacity}"

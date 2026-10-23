@@ -187,6 +187,19 @@ playwright install chromium
 playwright install-deps
 ```
 
+### Usar Chrome del sistema con el scraper
+
+En una terminal del servidor, inicia Chrome con depuración remota:
+
+```bash
+google-chrome --remote-debugging-address=127.0.0.1 \
+	--remote-debugging-port=9222 \
+	--user-data-dir=/home/jaxi/.cache/stockapple-chrome \
+	--no-first-run
+```
+
+Deja Chrome ejecutándose y lanza `python main.py` desde otra terminal.
+
 ### Logs y debugging
 
 - **Logs:** `logs/apple_bot_YYYYMMDD.log`
